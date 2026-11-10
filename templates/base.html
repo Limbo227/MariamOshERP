@@ -10,15 +10,16 @@
 </head>
 <body class="min-h-screen bg-stone-100 text-stone-900">
   <header class="bg-stone-900 text-stone-100">
-    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
       <a href="{% url 'dashboard' %}" class="text-lg font-semibold text-stone-100 no-underline">Мариам-Ош</a>
       {% if user.is_authenticated and workspace %}
         <nav class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           {% if can_view_products %}<a class="text-stone-100 no-underline" href="{% url 'product_list' %}">Товары</a>{% endif %}
-          {% if can_view_suppliers %}<a class="text-stone-100 no-underline" href="{% url 'supplier_list' %}">Поставщики</a>{% endif %}
-          {% if can_view_warehouses %}<a class="text-stone-100 no-underline" href="{% url 'warehouse_list' %}">Склады</a>{% endif %}
-          {% if can_view_openings %}<a class="text-stone-100 no-underline" href="{% url 'opening_list' %}">Начальные остатки</a>{% endif %}
-          {% if can_view_stock %}<a class="text-stone-100 no-underline" href="{% url 'balance_list' %}">Остатки</a>{% endif %}
+          {% if can_view_suppliers %}<a class="text-stone-100 no-underline" href="{% url 'supplier_list' %}">Контрагенты</a>{% endif %}
+          {% if can_view_stations %}<a class="text-stone-100 no-underline" href="{% url 'station_list' %}">Станции</a>{% endif %}
+          {% if can_view_contracts %}<a class="text-stone-100 no-underline" href="{% url 'contract_list' %}">Контракты</a>{% endif %}
+          {% if can_view_contracts %}<a class="text-stone-100 no-underline" href="{% url 'payment_list' %}">Оплаты</a>{% endif %}
+          {% if can_view_contracts %}<a class="text-stone-100 no-underline" href="{% url 'contract_swod' %}">Свод</a>{% endif %}
         </nav>
         <div class="flex items-center gap-3 text-sm">
           <span>{{ workspace.role.name }}</span>
@@ -30,7 +31,7 @@
       {% endif %}
     </div>
   </header>
-  <main class="mx-auto max-w-5xl px-4 py-6">
+  <main class="mx-auto max-w-7xl px-4 py-6">
     {% if messages %}
       <ul class="mb-4 space-y-2">
         {% for message in messages %}

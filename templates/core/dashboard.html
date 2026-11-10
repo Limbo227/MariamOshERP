@@ -4,6 +4,12 @@
   <section class="rounded-lg border border-stone-200 bg-white p-5">
     <h1 class="text-2xl font-semibold">{{ workspace.company.name }}</h1>
     <p class="mt-2 text-stone-700">Роль: {{ workspace.role.name }}. Данные демонстрации синтетические.</p>
+    {% if can_add_contracts %}
+      <p class="mt-4"><a class="underline" href="{% url 'contract_create' %}">Новый контракт</a></p>
+    {% endif %}
+    {% if can_view_contracts %}
+      <p class="mt-2"><a class="underline" href="{% url 'contract_swod' %}">Свод</a></p>
+    {% endif %}
     {% if can_open_stock %}
       <p class="mt-4"><a class="underline" href="{% url 'opening_create' %}">Новый начальный остаток</a></p>
     {% endif %}

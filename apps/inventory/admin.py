@@ -1,8 +1,13 @@
 from django.contrib import admin
 
 from apps.inventory.models import (
+    AdjustmentLine,
+    GoodsReceipt,
+    InventoryLot,
     OpeningBalance,
     OpeningLine,
+    ReceiptLine,
+    StockAdjustment,
     StockLedgerEntry,
     StockPostingSource,
     StorageLocation,
@@ -56,3 +61,28 @@ class StockPostingSourceAdmin(InspectOnlyAdmin):
 class StockLedgerEntryAdmin(InspectOnlyAdmin):
     list_display = ("effective_date", "company", "product", "location", "effect", "quantity", "bags")
     list_filter = ("effect", "company")
+
+
+@admin.register(GoodsReceipt)
+class GoodsReceiptAdmin(InspectOnlyAdmin):
+    list_display = ("reference", "company", "supplier", "effective_date", "state")
+
+
+@admin.register(ReceiptLine)
+class ReceiptLineAdmin(InspectOnlyAdmin):
+    list_display = ("document", "product", "location", "quantity")
+
+
+@admin.register(InventoryLot)
+class InventoryLotAdmin(InspectOnlyAdmin):
+    list_display = ("product", "batch_reference")
+
+
+@admin.register(StockAdjustment)
+class StockAdjustmentAdmin(InspectOnlyAdmin):
+    list_display = ("reason", "company", "effective_date", "state")
+
+
+@admin.register(AdjustmentLine)
+class AdjustmentLineAdmin(InspectOnlyAdmin):
+    list_display = ("document", "product", "location", "quantity")

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Заказ{% endblock %}
+{% block content %}
+  <section class="rounded-lg border border-stone-200 bg-white p-5">
+    <h1 class="text-2xl font-semibold">{{ order.reference }}</h1>
+    <p class="mt-2 text-stone-700">{{ order.supplier.name }}, {{ order.effective_date|date:"d.m.Y" }}, {{ order.journey }}.</p>
+    <p>Партия: {{ order.batch_number|default:"—" }}. Вагоны: {{ order.wagon_count|default:"—" }}.</p>
+    {% if order.contract_reference %}<p class="text-sm text-stone-600">Договор: {{ order.contract_reference }}.</p>{% endif %}
+    <table class="mt-4 w-full text-left text-sm">
+      <thead>
+        <tr class="border-b border-stone-200">
+          <th class="py-2">Товар</th>
+          <th class="py-2">Количество</th>
+          {% if show_prices %}<th class="py-2">Цена</th><th class="py-2">Сумма</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+          <tr class="border-b border-stone-100">
+            <td class="py-2">{{ line.product.name }}</td>
+            <td class="py-2">{{ line.quantity|floatformat:"-3" }} {{ line.product.get_unit_display }}</td>
+            {% if show_prices %}
+              <td class="py-2">{{ line.price_text }}</td>
+              <td class="py-2">{{ line.amount_text }}</td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if show_prices and agreed_text %}
+      <p class="mt-4">Согласованный долг: {{ agreed_text }} KGS.</p>
+      <p>К оплате: {{ due_text }} KGS. Аванс поставщику: {{ credit_text }} KGS.</p>
+    {% endif %}
+    {% if order.state == "DRAFT" and can_confirm_orders %}
+      <form class="mt-4" method="post" action="{% url 'order_confirm' order.pk %}">
+        {% csrf_token %}
+        <button class="min-h-11 rounded bg-stone-900 px-4 text-white">Отправлено</button>
+      </form>
+    {% endif %}
+  </section>
+  {% if amendment %}
+    <form method="post" action="{% url 'order_amend' order.pk %}" class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+      {% csrf_token %}
+      <h2 class="text-xl font-semibold">Изменить согласованные условия</h2>
+      <p class="mt-2 text-sm text-stone-600">Первоначальное количество остаётся в заказе. Меняется только долг.</p>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        {% for field in amendment %}
+          <label class="block text-sm">
+            <span class="mb-1 block">{{ field.label }}</span>
+            {{ field }}
+          </label>
+        {% endfor %}
+      </div>
+      <button class="mt-4 min-h-11 rounded bg-stone-900 px-4 text-white">Записать изменение</button>
+    </form>
+  {% endif %}
+  {% if payment %}
+    <form method="post" action="{% url 'order_pay' order.pk %}" class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+      {% csrf_token %}
+      <h2 class="text-xl font-semibold">Оплата поставщику</h2>
+      <p class="mt-2 text-sm text-stone-600">Демонстрационная запись оплаты. На заводе её ведёт оператор банка.</p>
+      {% for field in payment.hidden_fields %}{{ field }}{% endfor %}
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        {% for field in payment.visible_fields %}
+          <label class="block text-sm">
+            <span class="mb-1 block">{{ field.label }}</span>
+            {{ field }}
+          </label>
+        {% endfor %}
+      </div>
+      <button class="mt-4 min-h-11 rounded bg-stone-900 px-4 text-white">Зачесть оплату</button>
+    </form>
+  {% endif %}
+  <section class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+    <h2 class="text-xl font-semibold">Таможня</h2>
+    <ul class="mt-2 space-y-1 text-sm">
+      {% for item in acceptances %}
+        <li>{{ item.accepted_on|date:"d.m.Y" }}, {{ item.port }}: {{ item.quantity|floatformat:"-3" }}</li>
+      {% empty %}
+        <li>Отметки нет.</li>
+      {% endfor %}
+    </ul>
+    {% if customs_form %}
+      <form method="post" action="{% url 'order_accept' order.pk %}" class="mt-4 grid gap-3 md:grid-cols-3">
+        {% csrf_token %}
+        {% for field in customs_form %}
+          <label class="block text-sm"><span class="mb-1 block">{{ field.label }}</span>{{ field }}</label>
+        {% endfor %}
+        <button class="min-h-11 self-end rounded bg-stone-900 px-4 text-white">Прибыло в таможню</button>
+      </form>
+    {% endif %}
+  </section>
+  <section class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+    <h2 class="text-xl font-semibold">Склад</h2>
+    <ul class="mt-2 space-y-1 text-sm">
+      {% for receipt in receipts %}
+        <li><a class="underline" href="{% url 'receipt_detail' receipt.pk %}">{{ receipt.reference }}</a>: {{ receipt.posted_quantity|floatformat:"-3" }}</li>
+      {% empty %}
+        <li>Прихода нет.</li>
+      {% endfor %}
+    </ul>
+    {% if storage_form %}
+      <form method="post" action="{% url 'order_receive' order.pk %}" class="mt-4 grid gap-3 md:grid-cols-3">
+        {% csrf_token %}
+        {% for field in storage_form.hidden_fields %}{{ field }}{% endfor %}
+        {% for field in storage_form.visible_fields %}
+          <label class="block text-sm"><span class="mb-1 block">{{ field.label }}</span>{{ field }}</label>
+        {% endfor %}
+        <button class="min-h-11 self-end rounded bg-stone-900 px-4 text-white">Принять на склад</button>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

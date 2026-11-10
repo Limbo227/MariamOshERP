@@ -5,7 +5,7 @@ from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from apps.catalog.models import Product, ProductRequirement, Supplier
+from apps.catalog.models import OriginStation, Product, ProductRequirement, Supplier
 from apps.core.access import ensure_group
 from apps.core.models import Company, Membership, WarehouseGrant
 from apps.inventory.models import OpeningBalance, OpeningLine, StorageLocation, Warehouse
@@ -32,9 +32,60 @@ VIEW_PERMS = [
     "inventory.view_stockledgerentry",
     "inventory.view_openingbalance",
 ]
-SUPPLY_PERMS = [*VIEW_PERMS, "catalog.add_product", "catalog.change_product", "catalog.add_supplier"]
-CUSTOMS_PERMS = list(VIEW_PERMS)
-STORAGE_PERMS = [*VIEW_PERMS, "inventory.add_openingbalance"]
+SUPPLY_PERMS = [
+    "core.view_workspace",
+    "catalog.view_product",
+    "catalog.add_product",
+    "catalog.change_product",
+    "catalog.view_supplier",
+    "catalog.add_supplier",
+    "catalog.view_originstation",
+    "catalog.add_originstation",
+    "procurement.view_supplycontract",
+    "procurement.add_supplycontract",
+    "procurement.view_contractline",
+    "procurement.add_contractline",
+    "procurement.view_contractshipment",
+    "procurement.add_contractshipment",
+    "procurement.view_factoryarrival",
+    "procurement.add_factoryarrival",
+    "procurement.view_contractpayment",
+    "procurement.add_contractpayment",
+]
+CUSTOMS_PERMS = [
+    *VIEW_PERMS,
+    "procurement.view_purchaseorder",
+    "procurement.view_shipment",
+    "procurement.add_shipment",
+    "procurement.change_shipment",
+    "procurement.view_transportunit",
+    "procurement.add_transportunit",
+    "procurement.view_purchasecharge",
+    "procurement.add_purchasecharge",
+    "procurement.view_chargepayment",
+    "procurement.add_chargepayment",
+    "procurement.view_customsacceptance",
+    "procurement.add_customsacceptance",
+    "quality.view_supplierqualityvalue",
+    "quality.view_exceptionrecord",
+    "inventory.view_goodsreceipt",
+]
+STORAGE_PERMS = [
+    *VIEW_PERMS,
+    "inventory.add_openingbalance",
+    "procurement.view_purchaseorder",
+    "procurement.view_shipment",
+    "procurement.view_transportunit",
+    "inventory.view_goodsreceipt",
+    "inventory.add_goodsreceipt",
+    "inventory.view_stockadjustment",
+    "inventory.add_stockadjustment",
+    "quality.view_qualityinspection",
+    "quality.add_qualityinspection",
+    "quality.view_localqualityvalue",
+    "quality.add_localqualityvalue",
+    "quality.view_exceptionrecord",
+]
 
 
 def seed():
@@ -118,6 +169,9 @@ def seed():
                 key=DEMO_OPENING_KEY,
             )
         post_opening(membership=storage, actor=storage.user, document_id=OpeningBalance.objects.get(company=company, key=DEMO_OPENING_KEY).pk)
+        for name in ("ДЖАРКУЛЬ", "КОСТАНАЙ", "ЖАНЫСПАЙ", "САРЫКОЛЬ", "АМАНКАРАГАЙ", "ЖАНА-ЕСИЛЬ", "ЕСИЛЬ", "УГОЛКИ", "АРКАЛЫК"):
+            OriginStation.objects.get_or_create(company=company, name=name)
+        get_user_model().objects.filter(username__in=["customs", "storage"]).update(is_active=False)
 
 
 def _ensure_user(username, *, first_name, last_name, superuser=False):

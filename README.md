@@ -1,6 +1,6 @@
 ﻿# Mariam-Osh ERP
 
-Phase 1 foundation is running locally. The Phase 0 design remains the business authority. Supply orders, receipts, quality and production are not built yet.
+Phase 2 supply-to-stock is running locally. The Phase 0 design remains the business authority. Production, sack consumption, manual grain issue and write-offs are not built yet.
 
 **Read first:** [core scope and build sequence](docs/core-scope.md) → [business rules](docs/business-rules.md) → [visual diagrams](docs/diagrams/README.md) → [database design](docs/domain-model.md).
 
@@ -37,8 +37,8 @@ Open http://127.0.0.1:8000/ for the Russian workplace and http://127.0.0.1:8000/
 These accounts and quantities are synthetic local demo data, not factory records:
 
 - `admin` / `Demo-admin-1` — technical admin
-- `supply` / `Demo-supply-1` — catalogue and stock view
-- `customs` / `Demo-customs-1` — stock view; cannot post opening balances
-- `storage` / `Demo-storage-1` — posts opening balances
+- `supply` / `Demo-supply-1` — orders, prices, debt, amendments, demo payments, and wheat release
+- `customs` / `Demo-customs-1` — shipments, wagons and customs charges, without supplier prices
+- `storage` / `Demo-storage-1` — opening stock, goods receipts, local checks and stock corrections, without supplier prices
 
 The seeded company is Мариам-Ош. The opening document is marked synthetic: 8,000 kg and 2,000 kg of wheat, and 500 empty sacks. Bran is in the catalogue only and has no stock balance.

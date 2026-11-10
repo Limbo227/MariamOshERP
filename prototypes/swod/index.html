@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Макет свода — Мариам-Ош</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.4 "Segoe UI", Arial, sans-serif; background: #f4f1ea; color: #1c1917; }
+    header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 20px; background: #1c1917; color: #fafaf9; }
+    header strong { font-size: 18px; }
+    nav { display: flex; gap: 8px; }
+    button { min-height: 40px; border: 0; border-radius: 6px; padding: 0 14px; background: #44403c; color: #fafaf9; cursor: pointer; }
+    button.active { background: #f5f0d8; color: #1c1917; }
+    main { padding: 16px 20px 40px; }
+    .note { max-width: 1100px; margin: 0 0 14px; color: #44403c; }
+    .sheet { display: none; overflow: auto; background: #fff; border: 1px solid #d6d3d1; }
+    .sheet.active { display: block; }
+    table { border-collapse: collapse; min-width: 1280px; }
+    th, td { border: 1px solid #a8a29e; padding: 4px 8px; white-space: nowrap; vertical-align: middle; }
+    th { background: #c6efce; font-weight: 600; text-align: center; }
+    .group { background: #e2efda; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .station { background: #f7fbf4; font-weight: 600; }
+    .contract { background: #fff8dc; }
+    .total td { background: #ecfccb; font-weight: 700; }
+    .neg { color: #9f1239; }
+    caption { caption-side: top; text-align: left; padding: 10px; font-size: 16px; font-weight: 700; }
+    .card { max-width: 920px; background: #fff; border: 1px solid #d6d3d1; padding: 16px; }
+    .card h2 { margin: 0 0 8px; }
+    .muted { color: #57534e; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Макет свода</strong>
+    <nav>
+      <button class="active" data-sheet="swod">Свод</button>
+      <button data-sheet="one">Контракт 77</button>
+    </nav>
+  </header>
+  <main>
+    <p class="note">Это отдельная страница для просмотра, не рабочая программа. Цифры взяты из <code>.local/swod/СВОД.txt</code> и сверены со скрином: партия 77, контракт «80, СПЕЦ.1 от 30.10.2024», отправитель АНТЕРА. Отгружено 1 470 000 кг на 30 135 000 руб., оплачено столько же, разница 0. По контракту было 1 500 000 кг. Колонки курса, боковых и сомов на макет не вынесены.</p>
+
+    <section id="swod" class="sheet active">
+      <table>
+        <caption>ПШЕНИЦА — Отправитель: ООО «АНТЕРА»</caption>
+        <thead>
+          <tr>
+            <th rowspan="2">Станция</th>
+            <th rowspan="2">партия</th>
+            <th rowspan="2">Получатель</th>
+            <th rowspan="2">Контракт №</th>
+            <th class="group" colspan="3">КОНТРАКТ</th>
+            <th class="group" colspan="4">ФАКТ.ОТПРАВЛЕНО</th>
+            <th class="group" colspan="2">ОПЛАЧЕНО</th>
+            <th rowspan="2">РАЗНИЦА<br>руб.</th>
+          </tr>
+          <tr>
+            <th>кол-во кг</th><th>цена</th><th>пшеница</th>
+            <th>кол-во кг</th><th>цена</th><th>пшеница</th><th>вагоны</th>
+            <th>пшеница</th><th>дата оплаты</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="station" rowspan="3">ДЖАРКУЛЬ</td>
+            <td rowspan="7">77</td>
+            <td rowspan="7">Мариям-Ош</td>
+            <td class="contract" rowspan="7">80, СПЕЦ.1 от 30.10.2024</td>
+            <td class="num" rowspan="7">1 500 000</td>
+            <td class="num" rowspan="7">20,5</td>
+            <td class="num" rowspan="7">30 750 000</td>
+            <td class="num">280 000</td><td class="num">20,5</td><td class="num">5 740 000</td><td class="num">4</td>
+            <td class="num">3 153 370</td><td>18.02.2025</td><td class="num">2 586 630</td>
+          </tr>
+          <tr>
+            <td class="num">210 000</td><td class="num">20,5</td><td class="num">4 305 000</td><td class="num">3</td>
+            <td class="num">3 291 860</td><td>19.02.2025</td><td class="num">1 013 140</td>
+          </tr>
+          <tr>
+            <td class="num">560 000</td><td class="num">20,5</td><td class="num">11 480 000</td><td class="num">8</td>
+            <td class="num">5 732 165</td><td>21.02.2025</td><td class="num">5 747 835</td>
+          </tr>
+          <tr>
+            <td class="station" rowspan="4">КОСТАНАЙ</td>
+            <td class="num">420 000</td><td class="num">20,5</td><td class="num">8 610 000</td><td class="num">6</td>
+            <td class="num">7 996 680</td><td>26.02.2025</td><td class="num">613 320</td>
+          </tr>
+          <tr>
+            <td></td><td></td><td></td><td></td>
+            <td class="num">2 419 345</td><td>27.02.2025</td><td class="num neg">−2 419 345</td>
+          </tr>
+          <tr>
+            <td></td><td></td><td></td><td></td>
+            <td class="num">4 077 010</td><td>03.03.2025</td><td class="num neg">−4 077 010</td>
+          </tr>
+          <tr>
+            <td></td><td></td><td></td><td></td>
+            <td class="num">3 464 570</td><td>04.03.2025</td><td class="num neg">−3 464 570</td>
+          </tr>
+          <tr class="total">
+            <td colspan="3">Итого</td><td></td>
+            <td class="num">1 500 000</td><td></td><td class="num">30 750 000</td>
+            <td class="num">1 470 000</td><td></td><td class="num">30 135 000</td><td class="num">21</td>
+            <td class="num">30 135 000</td><td></td><td class="num">0</td>
+          </tr>
+
+          <tr>
+            <td class="station">ДЖАРКУЛЬ</td>
+            <td rowspan="5">78</td>
+            <td rowspan="5">Мариям-Ош</td>
+            <td class="contract" rowspan="5">80, СПЕЦ.2 от 21.01.2025</td>
+            <td class="num" rowspan="5">1 050 000</td>
+            <td class="num" rowspan="5">21,5</td>
+            <td class="num" rowspan="5">22 575 000</td>
+            <td class="num">420 000</td><td class="num">21,5</td><td class="num">9 030 000</td><td class="num">6</td>
+            <td class="num">6 544 245</td><td>04.03.2025</td><td class="num">2 485 755</td>
+          </tr>
+          <tr>
+            <td class="station" rowspan="2">ЖАНЫСПАЙ</td>
+            <td class="num">280 000</td><td class="num">21,5</td><td class="num">6 020 000</td><td class="num">4</td>
+            <td class="num">6 606 220</td><td>07.03.2025</td><td class="num neg">−586 220</td>
+          </tr>
+          <tr>
+            <td class="num">140 000</td><td class="num">21,5</td><td class="num">3 010 000</td><td class="num">2</td>
+            <td class="num">2 728 710</td><td>11.03.2025</td><td class="num">281 290</td>
+          </tr>
+          <tr>
+            <td class="station" rowspan="2">КОСТАНАЙ</td>
+            <td class="num">210 000</td><td class="num">21,5</td><td class="num">4 515 000</td><td class="num">3</td>
+            <td class="num">2 675 080</td><td>12.03.2025</td><td class="num">1 839 920</td>
+          </tr>
+          <tr>
+            <td></td><td></td><td></td><td></td>
+            <td class="num">4 020 745</td><td>17.03.2025</td><td class="num neg">−4 020 745</td>
+          </tr>
+          <tr class="total">
+            <td colspan="3">Итого</td><td></td>
+            <td class="num">1 050 000</td><td></td><td class="num">22 575 000</td>
+            <td class="num">1 050 000</td><td></td><td class="num">22 575 000</td><td class="num">15</td>
+            <td class="num">22 575 000</td><td></td><td class="num">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="one" class="sheet">
+      <div class="card">
+        <h2>80, СПЕЦ.1 от 30.10.2024</h2>
+        <p>ООО «АНТЕРА» → Мариям-Ош, партия 77. Контракт 1 500 000 кг × 20,5 = 30 750 000 руб.</p>
+        <p class="muted">Та же сетка, что на своде: станция, факт и оплата стоят в одной строке. Оплата без вагона занимает свою строку и не отрывается от контракта. Дата отправки в эту сетку не входит.</p>
+      </div>
+      <table>
+        <caption>Партия 77</caption>
+        <thead>
+          <tr>
+            <th rowspan="2">Станция</th>
+            <th class="group" colspan="4">ФАКТ.ОТПРАВЛЕНО</th>
+            <th class="group" colspan="2">ОПЛАЧЕНО</th>
+            <th rowspan="2">РАЗНИЦА<br>руб.</th>
+          </tr>
+          <tr>
+            <th>кол-во кг</th><th>цена</th><th>пшеница</th><th>вагоны</th>
+            <th>пшеница</th><th>дата оплаты</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="station" rowspan="3">ДЖАРКУЛЬ</td>
+            <td class="num">280 000</td><td class="num">20,5</td><td class="num">5 740 000</td><td class="num">4</td>
+            <td class="num">3 153 370</td><td>18.02.2025</td><td class="num">2 586 630</td>
+          </tr>
+          <tr>
+            <td class="num">210 000</td><td class="num">20,5</td><td class="num">4 305 000</td><td class="num">3</td>
+            <td class="num">3 291 860</td><td>19.02.2025</td><td class="num">1 013 140</td>
+          </tr>
+          <tr>
+            <td class="num">560 000</td><td class="num">20,5</td><td class="num">11 480 000</td><td class="num">8</td>
+            <td class="num">5 732 165</td><td>21.02.2025</td><td class="num">5 747 835</td>
+          </tr>
+          <tr>
+            <td class="station" rowspan="4">КОСТАНАЙ</td>
+            <td class="num">420 000</td><td class="num">20,5</td><td class="num">8 610 000</td><td class="num">6</td>
+            <td class="num">7 996 680</td><td>26.02.2025</td><td class="num">613 320</td>
+          </tr>
+          <tr>
+            <td></td><td></td><td></td><td></td>
+            <td class="num">2 419 345</td><td>27.02.2025</td><td class="num neg">−2 419 345</td>
+          </tr>
+          <tr>
+            <td></td><td></td><td></td><td></td>
+            <td class="num">4 077 010</td><td>03.03.2025</td><td class="num neg">−4 077 010</td>
+          </tr>
+          <tr>
+            <td></td><td></td><td></td><td></td>
+            <td class="num">3 464 570</td><td>04.03.2025</td><td class="num neg">−3 464 570</td>
+          </tr>
+          <tr class="total">
+            <td>Итого</td>
+            <td class="num">1 470 000</td><td></td><td class="num">30 135 000</td><td class="num">21</td>
+            <td class="num">30 135 000</td><td></td><td class="num">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll("nav button").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll("nav button").forEach((item) => item.classList.remove("active"));
+        document.querySelectorAll(".sheet").forEach((sheet) => sheet.classList.remove("active"));
+        button.classList.add("active");
+        document.getElementById(button.dataset.sheet).classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>

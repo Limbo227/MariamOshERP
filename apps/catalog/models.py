@@ -83,16 +83,54 @@ class ProductRequirement(models.Model):
 
 
 class Supplier(models.Model):
+    """One counterparty. The same company can sell wheat and later buy flour."""
+
     company = models.ForeignKey(Company, on_delete=models.PROTECT)
     name = models.CharField("Название", max_length=160)
     reference = models.CharField("Код", max_length=40)
+    is_supplier = models.BooleanField("Поставщик", default=True)
+    is_customer = models.BooleanField("Покупатель", default=False)
+    is_other = models.BooleanField("Прочие", default=False)
     active = models.BooleanField(default=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["company", "reference"], name="unique_supplier_reference")]
+        constraints = [
+            models.UniqueConstraint(fields=["company", "reference"], name="unique_supplier_reference"),
+            models.CheckConstraint(
+                condition=Q(is_supplier=True) | Q(is_customer=True) | Q(is_other=True),
+                name="counterparty_has_role",
+            ),
+        ]
         ordering = ["name"]
-        verbose_name = "Поставщик"
-        verbose_name_plural = "Поставщики"
+        verbose_name = "Контрагент"
+        verbose_name_plural = "Контрагенты"
+
+    def roles_label(self):
+        labels = []
+        if self.is_supplier:
+            labels.append("Поставщик")
+        if self.is_customer:
+            labels.append("Покупатель")
+        if self.is_other:
+            labels.append("Прочие")
+        return ", ".join(labels)
+
+    def __str__(self):
+        return self.name
+
+
+class OriginStation(models.Model):
+    """Station the goods are sent from. The same names are reused on every contract."""
+
+    company = models.ForeignKey(Company, on_delete=models.PROTECT)
+    name = models.CharField("Станция", max_length=80)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["company", "name"], name="unique_origin_station")]
+        ordering = ["name"]
+        verbose_name = "Станция отправления"
+        verbose_name_plural = "Станции отправления"
 
     def __str__(self):
         return self.name

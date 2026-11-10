@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Приход{% endblock %}
+{% block content %}
+  <section class="rounded-lg border border-stone-200 bg-white p-5">
+    <h1 class="text-2xl font-semibold">{{ receipt.reference }}</h1>
+    <p class="mt-2">{{ receipt.supplier.name }}, {{ receipt.warehouse.name }}, {{ receipt.effective_date|date:"d.m.Y" }}, {{ receipt.get_state_display }}.</p>
+    <table class="mt-4 w-full text-left text-sm">
+      <thead><tr class="border-b border-stone-200"><th class="py-2">Товар</th><th class="py-2">Место</th><th class="py-2">Количество</th><th class="py-2">Ждёт допуска</th></tr></thead>
+      <tbody>
+        {% for item in lines %}
+          <tr class="border-b border-stone-100">
+            <td class="py-2">{{ item.line.product.name }}</td>
+            <td class="py-2">{{ item.line.location.name }}</td>
+            <td class="py-2">{{ item.line.quantity|floatformat:"-3" }}</td>
+            <td class="py-2">{% if item.pending is not None %}{{ item.pending|floatformat:"-3" }}{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if receipt.state == "DRAFT" and can_post %}
+      <form class="mt-4" method="post" action="{% url 'receipt_post' receipt.pk %}">{% csrf_token %}<button class="min-h-11 rounded bg-stone-900 px-4 text-white">Провести приход</button></form>
+    {% endif %}
+  </section>
+  {% if receipt.state == "POSTED" and can_inspect %}
+    <form method="post" action="{% url 'receipt_inspect' receipt.pk %}" class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+      {% csrf_token %}
+      <h2 class="text-xl font-semibold">Местная проверка</h2>
+      <p class="mt-2 text-sm text-stone-600">Число само по себе ничего не допускает и не бракует.</p>
+      <div class="mt-4 grid gap-3 md:grid-cols-2">{% for field in quality_form %}<label class="block text-sm"><span class="mb-1 block">{{ field.label }}</span>{{ field }}</label>{% endfor %}</div>
+      <button class="mt-4 min-h-11 rounded border border-stone-400 px-4">Записать проверку</button>
+    </form>
+  {% endif %}
+  {% if receipt.state == "POSTED" and can_release %}
+    <form method="post" action="{% url 'receipt_release' receipt.pk %}" class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+      {% csrf_token %}
+      <h2 class="text-xl font-semibold">Допуск в производство</h2>
+      <label class="mt-4 block text-sm"><span class="mb-1 block">Строка</span>
+        <select name="line" class="w-full rounded-md border border-stone-300 bg-white px-3 py-2">
+          {% for item in lines %}<option value="{{ item.line.pk }}">{{ item.line.product.name }} — принято {{ item.line.quantity|floatformat:"-3" }}</option>{% endfor %}
+        </select>
+      </label>
+      {% for field in release_form.hidden_fields %}{{ field }}{% endfor %}
+      <div class="mt-4 grid gap-3 md:grid-cols-3">{% for field in release_form.visible_fields %}<label class="block text-sm"><span class="mb-1 block">{{ field.label }}</span>{{ field }}</label>{% endfor %}</div>
+      <button class="mt-4 min-h-11 rounded bg-stone-900 px-4 text-white">Допустить</button>
+    </form>
+  {% endif %}
+{% endblock %}

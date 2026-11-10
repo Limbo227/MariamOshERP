@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Поставка{% endblock %}
+{% block content %}
+  <section class="rounded-lg border border-stone-200 bg-white p-5">
+    <h1 class="text-2xl font-semibold">{{ shipment.reference }}</h1>
+    <p class="mt-2">{{ shipment.supplier.name }}, {{ shipment.get_state_display }}{% if shipment.customs_port %}, {{ shipment.customs_port }}{% endif %}.</p>
+    <p class="mt-2 text-sm text-stone-600">Поставка ещё не меняет складской остаток.</p>
+    {% if can_edit %}
+      <form method="post" action="{% url 'shipment_state' shipment.pk %}" class="mt-4 flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <label class="block text-sm"><span class="mb-1 block">{{ state_form.state.label }}</span>{{ state_form.state }}</label>
+        <button class="min-h-11 rounded border border-stone-400 px-4">Сохранить состояние</button>
+      </form>
+    {% endif %}
+    <h2 class="mt-6 text-xl font-semibold">Вагоны</h2>
+    <ul class="mt-2 space-y-1 text-sm">
+      {% for unit in units %}<li>{{ unit.get_kind_display }} {{ unit.identifier }}: заявлено {{ unit.declared_quantity|floatformat:"-3" }}</li>{% empty %}<li>Вагонов нет.</li>{% endfor %}
+    </ul>
+    {% if can_edit %}
+      <form method="post" action="{% url 'shipment_wagon' shipment.pk %}" class="mt-4 grid gap-3 md:grid-cols-3">
+        {% csrf_token %}
+        {% for field in wagon_form %}<label class="block text-sm"><span class="mb-1 block">{{ field.label }}</span>{{ field }}</label>{% endfor %}
+        <button class="min-h-11 self-end rounded bg-stone-900 px-4 text-white">Добавить вагон</button>
+      </form>
+    {% endif %}
+  </section>
+  <section class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+    <h2 class="text-xl font-semibold">Паспорт и сравнение</h2>
+    <ul class="mt-2 space-y-1 text-sm">
+      {% for item in passport %}<li>{{ item.parameter }}: {{ item.number }} {{ item.unit }}</li>{% empty %}<li>Паспорт не обязателен.</li>{% endfor %}
+    </ul>
+    {% for item in comparisons %}
+      {% if item.rows %}
+        <h3 class="mt-4 font-semibold">{{ item.unit.identifier }}</h3>
+        <table class="mt-2 w-full text-left text-sm">
+          <thead><tr class="border-b border-stone-200"><th class="py-2">Показатель</th><th class="py-2">Паспорт</th><th class="py-2">Местная проверка</th></tr></thead>
+          <tbody>
+            {% for row in item.rows %}
+              <tr class="border-b border-stone-100"><td class="py-2">{{ row.parameter }}{% if row.unit %}, {{ row.unit }}{% endif %}</td><td class="py-2">{{ row.passport }}</td><td class="py-2">{{ row.local|default:"—" }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    {% endfor %}
+    {% if can_passport %}
+      <form method="post" action="{% url 'shipment_passport' shipment.pk %}" class="mt-4 grid gap-3 md:grid-cols-4">
+        {% csrf_token %}
+        {% for field in passport_form %}<label class="block text-sm"><span class="mb-1 block">{{ field.label }}</span>{{ field }}</label>{% endfor %}
+        <button class="min-h-11 self-end rounded bg-stone-900 px-4 text-white">Записать паспорт</button>
+      </form>
+    {% endif %}
+  </section>
+  {% if can_charge %}
+    <section class="mt-4 rounded-lg border border-stone-200 bg-white p-5">
+      <h2 class="text-xl font-semibold">Таможенные и прочие расходы</h2>
+      <p class="mt-2 text-sm text-stone-600">Эти суммы не уменьшают долг за зерно.</p>
+      <ul class="mt-2 space-y-1 text-sm">{% for charge in charges %}<li>{{ charge.counterparty }}: {{ charge.amount|floatformat:2 }} KGS</li>{% endfor %}</ul>
+      <form method="post" action="{% url 'shipment_charge' shipment.pk %}" class="mt-4 grid gap-3 md:grid-cols-3">
+        {% csrf_token %}
+        {% for field in charge_form %}<label class="block text-sm"><span class="mb-1 block">{{ field.label }}</span>{{ field }}</label>{% endfor %}
+        <button class="min-h-11 self-end rounded bg-stone-900 px-4 text-white">Записать расход</button>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

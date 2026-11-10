@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Расхождения{% endblock %}
+{% block content %}
+  <section class="rounded-lg border border-stone-200 bg-white p-5">
+    <h1 class="text-2xl font-semibold">Расхождения</h1>
+    <table class="mt-4 w-full text-left text-sm">
+      <thead><tr class="border-b border-stone-200"><th class="py-2">Заказ</th><th class="py-2">Описание</th><th class="py-2">Состояние</th><th class="py-2"></th></tr></thead>
+      <tbody>
+        {% for record in page %}
+          <tr class="border-b border-stone-100">
+            <td class="py-2">{% if record.order %}{{ record.order.reference }}{% else %}—{% endif %}</td>
+            <td class="py-2">{{ record.summary }}</td>
+            <td class="py-2">{{ record.get_state_display }}</td>
+            <td class="py-2">
+              {% if record.state == "OPEN" %}
+                <form method="post" action="{% url 'exception_resolve' record.pk %}">{% csrf_token %}<button class="min-h-11 rounded border border-stone-400 px-3">Разобрано</button></form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}<tr><td class="py-2" colspan="4">Открытых расхождений нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

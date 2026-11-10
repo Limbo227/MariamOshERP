@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.catalog.models import Product, ProductRequirement, Supplier
+from apps.catalog.models import OriginStation, Product, ProductRequirement, Supplier
 
 
 @admin.register(Product)
@@ -15,8 +15,13 @@ class ProductRequirementAdmin(admin.ModelAdmin):
     list_display = ("product", "component", "quantity")
 
 
+@admin.register(OriginStation)
+class OriginStationAdmin(admin.ModelAdmin):
+    list_display = ("name", "company", "active")
+
+
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):
-    list_display = ("name", "reference", "company", "active")
+    list_display = ("name", "reference", "is_supplier", "is_customer", "is_other", "company", "active")
     list_filter = ("company", "active")
     search_fields = ("name", "reference")

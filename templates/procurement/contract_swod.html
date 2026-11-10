@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Свод{% endblock %}
+{% block content %}
+  <style>
+    .swod { overflow: auto; background: #fff; border: 1px solid #d6d3d1; }
+    .swod table { border-collapse: collapse; min-width: 1180px; width: 100%; }
+    .swod th, .swod td { border: 1px solid #a8a29e; padding: 4px 8px; white-space: nowrap; vertical-align: middle; }
+    .swod th { background: #c6efce; text-align: center; font-weight: 600; }
+    .swod .group { background: #e2efda; }
+    .swod .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .swod .station { background: #f7fbf4; font-weight: 600; }
+    .swod .contract { background: #fff8dc; }
+    .swod .total td { background: #ecfccb; font-weight: 700; }
+    .swod .neg { color: #9f1239; }
+  </style>
+  <section>
+    <h1 class="text-2xl font-semibold">Свод по контрактам</h1>
+    {% for group in grouped %}
+      <h2 class="mt-6 text-xl font-semibold">Отправитель: {{ group.supplier.name }}</h2>
+      <div class="swod mt-3">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">Станция</th>
+              <th rowspan="2">партия</th>
+              <th rowspan="2">Получатель</th>
+              <th rowspan="2">Контракт №</th>
+              <th class="group" colspan="3">КОНТРАКТ</th>
+              <th class="group" colspan="4">ФАКТ.ОТПРАВЛЕНО</th>
+              <th class="group" colspan="2">ОПЛАЧЕНО</th>
+              <th rowspan="2">РАЗНИЦА<br>руб.</th>
+            </tr>
+            <tr>
+              <th>кол-во кг</th><th>цена</th><th>сумма</th>
+              <th>кол-во кг</th><th>цена</th><th>сумма</th><th>вагоны</th>
+              <th>сумма</th><th>дата оплаты</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for block in group.contracts %}
+              {% for row in block.rows %}
+                <tr>
+                  {% if row.station_span %}<td class="station" rowspan="{{ row.station_span }}">{{ row.station }}{% if row.product %}<br><span class="font-normal">{{ row.product }}</span>{% endif %}</td>{% endif %}
+                  {% if row.identity_span %}
+                    <td rowspan="{{ row.identity_span }}"></td>
+                    <td rowspan="{{ row.identity_span }}">{{ block.recipient }}</td>
+                    <td class="contract" rowspan="{{ row.identity_span }}">{{ block.number }}</td>
+                  {% endif %}
+                  {% if row.terms_span %}
+                    <td class="num" rowspan="{{ row.terms_span }}">{{ row.qty }}</td>
+                    <td class="num" rowspan="{{ row.terms_span }}">{{ row.price }}</td>
+                    <td class="num" rowspan="{{ row.terms_span }}">{{ row.sum }}</td>
+                  {% endif %}
+                  <td class="num">{{ row.fact_qty }}</td>
+                  <td class="num">{{ row.fact_price }}</td>
+                  <td class="num">{{ row.fact_sum }}</td>
+                  <td class="num">{{ row.wagons }}</td>
+                  <td class="num">{{ row.paid }}</td>
+                  <td>{{ row.paid_on }}</td>
+                  <td class="num{% if row.negative %} neg{% endif %}">{{ row.balance }}</td>
+                </tr>
+              {% endfor %}
+              <tr class="total">
+                <td colspan="3">Итого</td>
+                <td></td>
+                <td class="num">{{ block.total.qty }}</td>
+                <td></td>
+                <td class="num">{{ block.total.sum }}</td>
+                <td class="num">{{ block.total.fact_qty }}</td>
+                <td></td>
+                <td class="num">{{ block.total.fact_sum }}</td>
+                <td class="num">{{ block.total.wagons }}</td>
+                <td class="num">{{ block.total.paid }}</td>
+                <td></td>
+                <td class="num{% if block.total.negative %} neg{% endif %}">{{ block.total.balance }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% empty %}
+      <p class="mt-4">Контрактов нет.</p>
+    {% endfor %}
+  </section>
+{% endblock %}
