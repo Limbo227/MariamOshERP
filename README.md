@@ -1,7 +1,6 @@
 ﻿# Mariam-Osh ERP
 
-Phase 0 core design — updated 2026-11-10 from Bakai's annotated answers and follow-up decisions.
-The design package is complete for the core build. No ERP application has been implemented or deployed.
+Phase 1 foundation is running locally. The Phase 0 design remains the business authority. Supply orders, receipts, quality and production are not built yet.
 
 **Read first:** [core scope and build sequence](docs/core-scope.md) → [business rules](docs/business-rules.md) → [visual diagrams](docs/diagrams/README.md) → [database design](docs/domain-model.md).
 
@@ -19,4 +18,27 @@ Exact annotated input and prior design files are preserved in docs/history/2026-
 docs/ contains the maintained design; docs/adr/ records architectural decisions; docs/diagrams/ holds editable Mermaid/SVG sources and PNG previews; docs/history/ holds immutable evidence.
 Existing .idea/, .venv/ and main.py are preserved. main.py is the original PyCharm sample, not ERP code.
 
-Use this directory as the future repository root; the application/project name is ebb-erp. This supersedes the earlier suggestion to nest another repository and move documentation into it. The clean workspace is already isolated from ERPNext, and one repository keeps code and design together. Phase 1 will add config/, apps/, templates/, static/, tests/ and local setup files here, with isolated dependencies and synthetic fixtures.
+This directory is the repository root. The application name is ebb-erp. It stays isolated from ERPNext, and code and design stay in one repository. `main.py` is the original PyCharm sample, not ERP code.
+
+## Run locally
+PostgreSQL for this workspace listens on `127.0.0.1:55432`. Start it with `scripts\local-db.ps1 -Action start` when it is stopped. Details are in [local setup](docs/development.md).
+
+```
+.venv\Scripts\python manage.py migrate
+.venv\Scripts\python manage.py seed_demo
+npm run build
+.venv\Scripts\python manage.py runserver
+```
+
+`scripts\check.ps1` runs Ruff, Django checks, a migration drift check and the PostgreSQL tests.
+
+Open http://127.0.0.1:8000/ for the Russian workplace and http://127.0.0.1:8000/admin/ for the technical admin. The admin page is only for the superuser. Factory roles use the workplace.
+
+These accounts and quantities are synthetic local demo data, not factory records:
+
+- `admin` / `Demo-admin-1` — technical admin
+- `supply` / `Demo-supply-1` — catalogue and stock view
+- `customs` / `Demo-customs-1` — stock view; cannot post opening balances
+- `storage` / `Demo-storage-1` — posts opening balances
+
+The seeded company is Мариам-Ош. The opening document is marked synthetic: 8,000 kg and 2,000 kg of wheat, and 500 empty sacks. Bran is in the catalogue only and has no stock balance.

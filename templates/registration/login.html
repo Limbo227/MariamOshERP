@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+  <section class="mx-auto max-w-md rounded-lg border border-stone-200 bg-white p-5">
+    <h1 class="text-2xl font-semibold">Вход</h1>
+    <form method="post" class="mt-4 space-y-4">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="text-red-800">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <label class="block text-sm">
+        <span class="mb-1 block">{{ form.username.label }}</span>
+        {{ form.username }}
+      </label>
+      <label class="block text-sm">
+        <span class="mb-1 block">{{ form.password.label }}</span>
+        {{ form.password }}
+      </label>
+      <button class="min-h-11 rounded bg-stone-900 px-4 text-white">Войти</button>
+    </form>
+    <p class="mt-4 text-sm text-stone-600">Локальная демонстрация: supply, customs, storage.</p>
+  </section>
+{% endblock %}

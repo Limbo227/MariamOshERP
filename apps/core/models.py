@@ -11,6 +11,7 @@ class User(AbstractUser):
 class Company(models.Model):
     name = models.CharField("Название", max_length=160)
     code = models.SlugField(unique=True)
+    timezone = models.CharField("Часовой пояс", max_length=64, default="Asia/Bishkek")
 
     class Meta:
         verbose_name = "Предприятие"
@@ -29,8 +30,17 @@ class Membership(models.Model):
         constraints = [models.UniqueConstraint(fields=["user", "company"], name="unique_membership")]
 
     def allows(self, permission):
-        app_label, codename = permission.split(".")
-        return self.role.permissions.filter(content_type__app_label=app_label, codename=codename).exists()
+        labels = getattr(self, "_permission_labels", None)
+        if labels is None:
+            labels = {
+                f"{app}.{code}"
+                for app, code in self.role.permissions.values_list("content_type__app_label", "codename")
+            }
+            self._permission_labels = labels
+        return permission in labels
+
+    def __str__(self):
+        return f"{self.user} / {self.company}"
 
 
 class WarehouseGrant(models.Model):
@@ -61,4 +71,24 @@ class AuditEvent(models.Model):
     class Meta:
         ordering = ["-recorded_at", "-pk"]
         permissions = [("view_workspace", "Доступ к рабочему месту")]
+        verbose_name = "Событие аудита"
+        verbose_name_plural = "События аудита"
+
+
+class OperationKey(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    command = models.CharField(max_length=64)
+    key = models.UUIDField()
+    fingerprint = models.CharField(max_length=64)
+    result_label = models.CharField(max_length=160)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["company", "key"], name="unique_operation_key")]
+        verbose_name = "Ключ операции"
+        verbose_name_plural = "Ключи операций"
+
+    def __str__(self):
+        return f"{self.command} {self.key}"
 

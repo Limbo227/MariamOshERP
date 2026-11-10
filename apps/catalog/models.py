@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -22,6 +20,7 @@ class Product(models.Model):
     company = models.ForeignKey(Company, on_delete=models.PROTECT)
     sku = models.CharField("Код", max_length=40)
     name = models.CharField("Название", max_length=160)
+    grade = models.CharField("Сорт или класс", max_length=40, blank=True)
     kind = models.CharField("Тип", max_length=12, choices=Kind.choices)
     unit = models.CharField("Единица учёта", max_length=3, choices=Unit.choices, default=Unit.KG)
     package_kg = models.DecimalField("Масса мешка, кг", max_digits=10, decimal_places=3, null=True, blank=True)
@@ -45,7 +44,7 @@ class Product(models.Model):
         return self.kind in (self.Kind.FLOUR, self.Kind.BYPRODUCT)
 
     def clean(self):
-        if self.pk and self.stockentry_set.exists():
+        if self.pk and self.ledger_entries.exists():
             old = Product.objects.get(pk=self.pk)
             if any(getattr(old, field) != getattr(self, field) for field in ("company_id", "kind", "unit", "package_kg")):
                 raise ValidationError("У товара с движениями нельзя менять тип, единицу или фасовку.")
@@ -75,7 +74,7 @@ class ProductRequirement(models.Model):
             raise ValidationError("Товары должны относиться к одному предприятию.")
         if self.product.kind != Product.Kind.FLOUR or self.component.kind != Product.Kind.SACK:
             raise ValidationError("Для муки в мешках требуется один пустой мешок.")
-        if self.quantity != Decimal("1"):
+        if self.quantity != 1:
             raise ValidationError("Для одного готового мешка нужен один пустой мешок.")
 
     def save(self, *args, **kwargs):
