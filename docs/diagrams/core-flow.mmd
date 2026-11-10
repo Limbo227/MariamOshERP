@@ -1,0 +1,12 @@
+﻿flowchart LR
+    O["Confirmed supply order"] --> B["Batch / customs / wagons"]
+    B --> R["Actual factory receipt"]
+    R --> Q["Local quality comparison"]
+    Q --> L["Authorised manual release"]
+    L --> I["Separate manual wheat issue"]
+    P["Packed production report"] --> F["Finished stock"]
+    P --> S["Consume matching empty sacks"]
+    I -. optional report link .-> P
+    O --> D["Supplier debt"]
+    A["Agreed amendment"] --> D
+    Pay["Recorded payment"] --> D

@@ -1,0 +1,16 @@
+{
+  "name": "ebb-erp",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/app.css -o ./static/css/app.css --minify",
+    "build": "npm run build:css && node scripts/vendor.mjs"
+  },
+  "dependencies": {
+    "htmx.org": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

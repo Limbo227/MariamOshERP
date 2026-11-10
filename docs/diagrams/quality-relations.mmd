@@ -1,0 +1,7 @@
+﻿erDiagram
+    Shipment ||--o{ SupplierQualityValue : passport_values
+    TransportUnit o|--o{ QualityInspection : inspected
+    ReceiptLine o|--o{ QualityInspection : sampled
+    QualityInspection ||--o{ LocalQualityValue : measures
+    ReceiptLine ||--o{ ReleaseDecision : released_quantity
+    QualityInspection o|--o{ ReleaseDecision : evidence

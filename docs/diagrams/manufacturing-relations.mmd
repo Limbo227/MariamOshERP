@@ -1,0 +1,10 @@
+﻿erDiagram
+    Product ||--o{ PackagingRule : finished_sku
+    Product ||--o{ PackagingRule : empty_sack
+    ProductionReport ||--o{ OutputLine : records
+    Product ||--o{ OutputLine : produces
+    PackagingRule ||--o{ OutputLine : uses_snapshot
+    MaterialIssue ||--o{ IssueLine : consumes
+    ProductionReport o|--o{ MaterialIssue : optionally_explains
+    Product ||--o{ IssueLine : wheat_or_material
+    StorageLocation ||--o{ IssueLine : issued_from

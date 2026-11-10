@@ -1,0 +1,14 @@
+﻿erDiagram
+    Supplier ||--o{ PurchaseOrder : receives_orders
+    PurchaseOrder ||--o{ OrderLine : contains
+    Product ||--o{ OrderLine : ordered
+    PurchaseOrder ||--o{ OrderAmendment : revised_by
+    PurchaseOrder o|--o{ Shipment : tracks
+    Shipment ||--o{ TransportUnit : arrives_in
+    PurchaseOrder o|--o{ GoodsReceipt : received_against
+    GoodsReceipt ||--o{ ReceiptLine : contains
+    OrderLine o|--o{ ReceiptLine : matched_to
+    TransportUnit o|--o{ ReceiptLine : arrived_on
+    StorageLocation ||--o{ ReceiptLine : received_into
+    Product ||--o{ ReceiptLine : received
+    ReceiptLine ||--o| InventoryLot : establishes
