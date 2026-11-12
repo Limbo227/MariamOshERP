@@ -1,0 +1,18 @@
+%% Target workflow v1.1. Supplier debt at agreed-order confirmation: owner confirmed 2026-11-10.
+flowchart TD
+    UI[One user action] --> CMD[Authorized command and payload identity]
+    CMD --> TX[One PostgreSQL transaction]
+    TX --> LOCK[Lock period, document, stock keys, money and open items]
+    LOCK --> VALIDATE[Validate state, ownership, history, quantities and currency]
+    VALIDATE --> BATCH[PostingBatch]
+    BATCH --> STOCK[StockEntry: physical quantities]
+    BATCH --> JOURNAL[JournalEntry and JournalLine: balanced money effects]
+    JOURNAL --> ITEMS[OpenItem: party detail of control-account lines]
+    ITEMS --> MATCH[SettlementMatch: which debt a payment closes]
+    BATCH --> AUDIT[Audit and Outbox]
+    STOCK --> COMMIT[Commit all effects or roll back all]
+    JOURNAL --> COMMIT
+    MATCH --> COMMIT
+    AUDIT --> COMMIT
+    COMMIT --> VIEWS[Authorized report views]
+    VIEWS --> REPORTS[Stock, debts, cash, production, profit and holding]

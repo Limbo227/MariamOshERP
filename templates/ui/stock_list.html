@@ -1,0 +1,43 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Остатки — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Склад / Остатки{% endblock %}
+{% block heading %}Остатки{% endblock %}
+{% block content %}
+  <p class="mb-4 text-sm text-slate-600">Килограммы и штуки не складываются. Нулевой остаток скрыт.</p>
+  <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
+    <label class="text-sm">Склад
+      <select name="warehouse" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in warehouses %}<option value="{{ row.pk }}" {% if warehouse == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Товар
+      <select name="product" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in products %}<option value="{{ row.pk }}" {% if product == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Показать</button>
+  </form>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2">Склад</th><th class="px-3 py-2">Место</th><th class="px-3 py-2">Товар</th><th class="px-3 py-2">Код</th><th class="px-3 py-2 text-right">Количество</th><th class="px-3 py-2">Единица</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2">{{ row.warehouse }}</td>
+            <td class="px-3 py-2">{{ row.location }}</td>
+            <td class="px-3 py-2">{{ row.product }}</td>
+            <td class="px-3 py-2">{{ row.sku }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ row.quantity|qty }}</td>
+            <td class="px-3 py-2">{{ row.unit|unit }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="6" class="px-3 py-8 text-center text-slate-500">Остатков нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

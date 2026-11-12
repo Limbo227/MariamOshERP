@@ -1,0 +1,25 @@
+{% extends "ui/shell.html" %}
+{% block title %}Склады — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Склады{% endblock %}
+{% block heading %}Склады{% endblock %}
+{% block content %}
+  <div class="mb-4"><a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'warehouse_create' %}">Добавить склад</a></div>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2 font-medium">Код</th><th class="px-3 py-2 font-medium">Название</th><th class="px-3 py-2 font-medium">Тип</th><th class="px-3 py-2 font-medium">Состояние</th>
+      </tr></thead>
+      <tbody>
+        {% for warehouse in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2">{{ warehouse.code }}</td>
+            <td class="px-3 py-2"><a class="underline" href="{% url 'warehouse_detail' warehouse.pk %}">{{ warehouse.name }}</a></td>
+            <td class="px-3 py-2">{{ warehouse.get_kind_display }}</td>
+            <td class="px-3 py-2">{% if warehouse.active %}Активен{% else %}Отключён{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Складов нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

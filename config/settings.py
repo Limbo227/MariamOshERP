@@ -12,11 +12,21 @@ if not SECRET_KEY or SECRET_KEY.startswith("replace-"):
 DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 INSTALLED_APPS = [
-    "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
-    "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
-    "apps.core", "apps.catalog", "apps.inventory",
-    "apps.procurement", "apps.quality", "apps.production", "apps.settlements",
+    "apps.core",
+    "apps.inventory",
+    "apps.procurement",
+    "apps.sales",
+    "apps.finance",
+    "apps.production",
+    "apps.ui",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
 ]
+AUTH_USER_MODEL = "core.User"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware", "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware", "django.middleware.common.CommonMiddleware",
@@ -35,7 +45,7 @@ TEMPLATES = [{
 WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {"default": {
     "ENGINE": "django.db.backends.postgresql",
-    "NAME": os.getenv("POSTGRES_DB", "ebb_erp"),
+    "NAME": os.getenv("POSTGRES_DB", "ebb_holding_2026"),
     "USER": os.getenv("POSTGRES_USER", "ebb_app"),
     "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
     "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
@@ -43,7 +53,6 @@ DATABASES = {"default": {
     "CONN_MAX_AGE": 0,
     "TEST": {"NAME": "test_ebb_erp"},
 }}
-AUTH_USER_MODEL = "core.User"
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},

@@ -1,0 +1,53 @@
+{% extends "ui/shell.html" %}
+{% block title %}Контрагенты — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Контрагенты{% endblock %}
+{% block heading %}Контрагенты{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-end gap-2">
+      <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">Роль
+        <select name="role" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          <option value="supplier" {% if role == "supplier" %}selected{% endif %}>Поставщики</option>
+          <option value="customer" {% if role == "customer" %}selected{% endif %}>Покупатели</option>
+          <option value="employee" {% if role == "employee" %}selected{% endif %}>Сотрудники</option>
+        </select>
+      </label>
+      <label class="text-sm">Состояние
+        <select name="active" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          <option value="1" {% if active == "1" %}selected{% endif %}>Активные</option>
+          <option value="0" {% if active == "0" %}selected{% endif %}>Отключённые</option>
+        </select>
+      </label>
+      <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Найти</button>
+    </form>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'party_create' %}">Добавить контрагента</a>
+  </div>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2 font-medium">Название</th>
+        <th class="px-3 py-2 font-medium">Поставщик</th>
+        <th class="px-3 py-2 font-medium">Покупатель</th>
+        <th class="px-3 py-2 font-medium">Сотрудник</th>
+        <th class="px-3 py-2 font-medium">Состояние</th>
+      </tr></thead>
+      <tbody>
+        {% for party in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'party_detail' party.pk %}">{{ party.name }}</a></td>
+            <td class="px-3 py-2">{% if party.is_supplier %}Да{% else %}Нет{% endif %}</td>
+            <td class="px-3 py-2">{% if party.is_customer %}Да{% else %}Нет{% endif %}</td>
+            <td class="px-3 py-2">{% if party.is_employee %}Да{% else %}Нет{% endif %}</td>
+            <td class="px-3 py-2">{% if party.active %}Активен{% else %}Отключён{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">Контрагентов нет.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

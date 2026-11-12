@@ -1,0 +1,55 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Поставки — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Поставки{% endblock %}
+{% block heading %}Мониторинг поставок{% endblock %}
+{% block content %}
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">Поставка относится к спецификации. Черновик ничего не проводит. Проведение принимает вес на склад и создаёт долг поставщику.</p>
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-end gap-2">
+      <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">Поставщик
+        <select name="supplier" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for row in suppliers %}<option value="{{ row.pk }}" {% if supplier == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="text-sm">Договор
+        <select name="contract" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for row in contracts %}<option value="{{ row.pk }}" {% if contract == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.number }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="text-sm">Статус
+        <select name="status" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="text-sm">С<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">По<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Найти</button>
+    </form>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'shipment_create' %}">Новая поставка</a>
+  </div>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="sticky top-0 bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2">Вагон</th><th class="px-3 py-2">Закупка</th><th class="px-3 py-2">Поставщик</th><th class="px-3 py-2 text-right">Отправлено</th><th class="px-3 py-2">Статус</th><th class="px-3 py-2">Отправление</th>
+      </tr></thead>
+      <tbody>
+        {% for shipment in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'shipment_detail' shipment.pk %}">{{ shipment.wagon_number|default:"Без номера" }}</a></td>
+            <td class="px-3 py-2"><a class="underline" href="{% url 'purchase_detail' shipment.order.pk %}">{{ shipment.order.document.number }}</a></td>
+            <td class="px-3 py-2">{{ shipment.order.supplier.name }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ shipment.quantity|qty }}</td>
+            <td class="px-3 py-2">{{ shipment.get_status_display }}</td>
+            <td class="px-3 py-2">{{ shipment.departure_date|date:"d.m.Y" }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="6" class="px-3 py-8 text-center text-slate-500">Поставок нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

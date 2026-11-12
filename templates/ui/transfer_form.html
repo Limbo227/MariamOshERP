@@ -1,0 +1,12 @@
+{% extends "ui/shell.html" %}
+{% block title %}Перевод — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Финансы / Перевод{% endblock %}
+{% block heading %}Перевод между своими счетами{% endblock %}
+{% block content %}
+  <p class="mb-4 max-w-2xl text-sm text-slate-600">Только одна валюта: касса в банк, банк в кассу или между счетами одного типа. Это не доход, не расход и не оплата поставщику. Для разных валют нужен обмен.</p>
+  <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+    {% csrf_token %}
+    {% include "ui/_form_fields.html" %}
+    <button class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white" data-confirm="Провести перевод?">Провести перевод</button>
+  </form>
+{% endblock %}

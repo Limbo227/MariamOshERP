@@ -1,0 +1,25 @@
+{% extends "ui/shell.html" %}
+{% block title %}{{ warehouse.name }} — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Склады{% endblock %}
+{% block heading %}{{ warehouse.name }}{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap gap-2">
+    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'warehouse_edit' warehouse.pk %}">Изменить</a>
+    <form method="post" action="{% url 'warehouse_toggle' warehouse.pk %}">{% csrf_token %}<button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">{% if warehouse.active %}Отключить{% else %}Включить{% endif %}</button></form>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'location_create' %}?warehouse={{ warehouse.pk }}">Добавить место</a>
+  </div>
+  <p class="mb-4 text-sm text-slate-600">{{ warehouse.get_kind_display }}. Код {{ warehouse.code }}.</p>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr><th class="px-3 py-2 font-medium">Место хранения</th><th class="px-3 py-2 font-medium">Состояние</th></tr></thead>
+      <tbody>
+        {% for location in locations %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'location_detail' location.pk %}">{{ location.name }}</a></td>
+            <td class="px-3 py-2">{% if location.active %}Активно{% else %}Отключено{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="2" class="px-3 py-8 text-center text-slate-500">Мест хранения нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

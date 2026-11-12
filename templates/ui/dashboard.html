@@ -1,0 +1,223 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Обзор — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Главная{% endblock %}
+{% block heading %}Обзор{% endblock %}
+{% block content %}
+  <p class="text-sm text-slate-600">
+    {% if organization %}{{ organization.legal_name }}. <a class="underline" href="{% url 'company' %}">Карточка организации</a>{% else %}<a class="underline" href="{% url 'company' %}">Создайте карточку организации</a>, иначе документы не проводятся.{% endif %}
+    Сводка читает проведённые записи. Килограммы и штуки, как и разные валюты, не складываются.
+  </p>
+
+  <section class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Показатели">
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Активные поставщики</h2>
+      <p class="mt-2 text-2xl font-semibold tabular-nums">{{ supplier_count }}</p>
+    </article>
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Проведённые закупки</h2>
+      <p class="mt-2 text-2xl font-semibold tabular-nums">{{ purchase_count }}</p>
+      <p class="mt-1 text-xs text-slate-500">Без сторнированных</p>
+    </article>
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Черновики поставок</h2>
+      <p class="mt-2 text-2xl font-semibold tabular-nums">{{ shipments_in_transit }}</p>
+    </article>
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Проведённые поставки</h2>
+      <p class="mt-2 text-2xl font-semibold tabular-nums">{{ shipments_posted }}</p>
+    </article>
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Приёмка поставки</h2>
+      <p class="mt-2 text-sm text-slate-600">Проведение поставки сразу пишет склад и долг. Отдельная приёмка для вагона не нужна.</p>
+    </article>
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Остатки на складе</h2>
+      {% if stock %}
+        <ul class="mt-2 space-y-1">
+          {% for row in stock %}
+            <li class="text-lg font-semibold tabular-nums">{{ row.quantity|qty }} {{ row.label }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-2 text-sm text-slate-500">Нет остатков</p>
+      {% endif %}
+    </article>
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Долг поставщикам</h2>
+      {% if payables %}
+        <ul class="mt-2 space-y-1">
+          {% for row in payables %}
+            <li class="text-lg font-semibold tabular-nums">{{ row.amount|money }} <span class="text-sm font-medium text-slate-500">{{ row.currency }}</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-2 text-sm text-slate-500">Нет открытого долга</p>
+      {% endif %}
+    </article>
+    <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm text-slate-500">Авансы поставщикам</h2>
+      {% if advances %}
+        <ul class="mt-2 space-y-1">
+          {% for row in advances %}
+            <li class="text-lg font-semibold tabular-nums">{{ row.amount|money }} <span class="text-sm font-medium text-slate-500">{{ row.currency }}</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="mt-2 text-sm text-slate-500">Нет авансов</p>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="mt-8">
+    <h2 class="text-base font-semibold">Последние закупки</h2>
+    <div class="mt-3 max-h-[28rem] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full border-collapse text-sm">
+        <caption class="sr-only">Последние закупки</caption>
+        <thead class="sticky top-0 bg-slate-50 text-left text-slate-500">
+          <tr>
+            <th class="px-3 py-2 font-medium">Номер</th>
+            <th class="px-3 py-2 font-medium">Поставщик</th>
+            <th class="px-3 py-2 font-medium">Договор / спецификация</th>
+            <th class="px-3 py-2 font-medium">Дата</th>
+            <th class="px-3 py-2 text-right font-medium">Плановая сумма</th>
+            <th class="px-3 py-2 font-medium">Валюта</th>
+            <th class="px-3 py-2 font-medium">Состояние</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in recent_purchases %}
+            <tr class="border-t border-slate-100">
+              <td class="whitespace-nowrap px-3 py-2"><a class="underline" href="{% url 'purchase_detail' order.pk %}">{{ order.document.number }}</a></td>
+              <td class="px-3 py-2">{{ order.supplier.name }}</td>
+              <td class="px-3 py-2">
+                {% if order.contract_id %}{{ order.contract.number }} / {{ order.specification_number }}{% else %}—{% endif %}
+              </td>
+              <td class="whitespace-nowrap px-3 py-2">{{ order.document.effective_date|date:"d.m.Y" }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ order.planned|money }}</td>
+              <td class="px-3 py-2">{{ order.currency }}</td>
+              <td class="px-3 py-2">
+                {% if order.is_reversed %}
+                  <span class="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">Сторнирована</span>
+                {% else %}
+                  <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900">{{ order.document.get_state_display }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="px-3 py-8 text-center text-slate-500">Пока нет закупок.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-8">
+    <h2 class="text-base font-semibold">Входящие поставки</h2>
+    <div class="mt-3 max-h-[28rem] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full border-collapse text-sm">
+        <caption class="sr-only">Входящие поставки</caption>
+        <thead class="sticky top-0 bg-slate-50 text-left text-slate-500">
+          <tr>
+            <th class="px-3 py-2 font-medium">Вагон</th>
+            <th class="px-3 py-2 font-medium">Поставщик</th>
+            <th class="px-3 py-2 font-medium">Спецификация</th>
+            <th class="px-3 py-2 text-right font-medium">Отправлено</th>
+            <th class="px-3 py-2 font-medium">Статус</th>
+            <th class="px-3 py-2 font-medium">Отправление / прибытие</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shipment in incoming_shipments %}
+            <tr class="border-t border-slate-100">
+              <td class="whitespace-nowrap px-3 py-2"><a class="underline" href="{% url 'shipment_detail' shipment.pk %}">{% if shipment.wagon_number %}{{ shipment.wagon_number }}{% else %}Открыть{% endif %}</a></td>
+              <td class="px-3 py-2">{{ shipment.order.supplier.name }}</td>
+              <td class="px-3 py-2">
+                {% if shipment.order.contract_id %}
+                  {{ shipment.order.contract.number }} / {{ shipment.order.specification_number }}
+                {% else %}
+                  Закупка {{ shipment.order.document.number }}
+                {% endif %}
+              </td>
+              <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+                {{ shipment.quantity|qty }}{% if shipment.unit_count == 1 %} {{ shipment.unit|unit }}{% endif %}
+              </td>
+              <td class="px-3 py-2">
+                {% if shipment.status == "IN_TRANSIT" %}
+                  <span class="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900">{{ shipment.get_status_display }}</span>
+                {% elif shipment.status == "AT_CUSTOMS" %}
+                  <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-950">{{ shipment.get_status_display }}</span>
+                {% elif shipment.status == "ARRIVED" %}
+                  <span class="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">{{ shipment.get_status_display }}</span>
+                {% else %}
+                  <span class="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">{{ shipment.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="whitespace-nowrap px-3 py-2">
+                {{ shipment.departure_date|date:"d.m.Y" }}
+                {% if shipment.arrival_date %} / {{ shipment.arrival_date|date:"d.m.Y" }}{% else %} / ожидается{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="px-3 py-8 text-center text-slate-500">Нет поставок в пути, на таможне или ожидающих приёмки.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-8">
+    <h2 class="text-base font-semibold">Последние приёмки и оплаты</h2>
+    <div class="mt-3 max-h-[28rem] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full border-collapse text-sm">
+        <caption class="sr-only">Последние приёмки и оплаты</caption>
+        <thead class="sticky top-0 bg-slate-50 text-left text-slate-500">
+          <tr>
+            <th class="px-3 py-2 font-medium">Дата</th>
+            <th class="px-3 py-2 font-medium">Документ</th>
+            <th class="px-3 py-2 font-medium">Контрагент</th>
+            <th class="px-3 py-2 font-medium">Содержание</th>
+            <th class="px-3 py-2 font-medium">Состояние</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for operation in recent_operations %}
+            <tr class="border-t border-slate-100">
+              <td class="whitespace-nowrap px-3 py-2">{{ operation.date|date:"d.m.Y" }}</td>
+              <td class="whitespace-nowrap px-3 py-2"><a class="underline" href="{{ operation.url }}">{{ operation.kind }} {{ operation.number }}</a></td>
+              <td class="px-3 py-2">{{ operation.party }}</td>
+              <td class="px-3 py-2">
+                {% if operation.mode == "money" %}
+                  <span class="tabular-nums">{{ operation.amount|money }} {{ operation.currency }}</span>
+                  · {{ operation.place }}
+                {% elif operation.mixed %}
+                  несколько позиций · {{ operation.place }}
+                {% elif operation.quantity %}
+                  <span class="tabular-nums">{{ operation.quantity|qty }} {{ operation.unit|unit }}</span>
+                  · {{ operation.place }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="px-3 py-2">
+                {% if operation.reversed %}
+                  <span class="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">Сторнирован</span>
+                {% else %}
+                  <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900">Проведён</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="px-3 py-8 text-center text-slate-500">Пока нет проведённых приёмок и оплат поставщикам.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

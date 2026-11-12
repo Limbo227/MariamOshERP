@@ -1,0 +1,12 @@
+{% extends "ui/shell.html" %}
+{% block title %}Контрагент — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Контрагенты{% endblock %}
+{% block heading %}{% if party %}{{ party.name }}{% else %}Новый контрагент{% endif %}{% endblock %}
+{% block content %}
+  <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+    {% csrf_token %}
+    {% include "ui/_form_fields.html" %}
+    <p class="text-xs text-slate-500">Один контрагент может быть поставщиком, покупателем или и тем и другим. Отдельные таблицы поставщиков и покупателей не ведутся.</p>
+    <button class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white">Сохранить</button>
+  </form>
+{% endblock %}

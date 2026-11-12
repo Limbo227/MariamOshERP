@@ -1,0 +1,11 @@
+{% if page.paginator.num_pages > 1 %}
+  <nav class="mt-4 flex items-center gap-3 text-sm" aria-label="Страницы">
+    {% if page.has_previous %}
+      <a class="underline" href="?page={{ page.previous_page_number }}{% if query %}&{{ query }}{% endif %}">Назад</a>
+    {% endif %}
+    <span>{{ page.number }} из {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}
+      <a class="underline" href="?page={{ page.next_page_number }}{% if query %}&{{ query }}{% endif %}">Дальше</a>
+    {% endif %}
+  </nav>
+{% endif %}

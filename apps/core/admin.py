@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from apps.core.models import AuditEvent, Company, Membership, OperationKey, User, WarehouseGrant
+from apps.core.models import Document, Organization, Party, User
 
 
-class InspectOnlyAdmin(admin.ModelAdmin):
+class ReadOnlyAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
@@ -14,39 +14,29 @@ class InspectOnlyAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    def get_readonly_fields(self, request, obj=None):
-        return [field.name for field in self.model._meta.fields]
-
 
 @admin.register(User)
 class CoreUserAdmin(UserAdmin):
     pass
 
 
-@admin.register(Company)
-class CompanyAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "timezone")
-    search_fields = ("name", "code")
+@admin.register(Organization)
+class OrganizationAdmin(admin.ModelAdmin):
+    list_display = ("legal_name", "currency", "timezone")
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
-@admin.register(Membership)
-class MembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "company", "role")
-    list_filter = ("company",)
+@admin.register(Party)
+class PartyAdmin(admin.ModelAdmin):
+    list_display = ("name", "is_supplier", "is_customer", "active")
+    list_filter = ("is_supplier", "is_customer", "active")
+    search_fields = ("name",)
 
 
-@admin.register(WarehouseGrant)
-class WarehouseGrantAdmin(admin.ModelAdmin):
-    list_display = ("membership", "warehouse")
-
-
-@admin.register(AuditEvent)
-class AuditEventAdmin(InspectOnlyAdmin):
-    list_display = ("recorded_at", "company", "actor", "action", "object_label")
-    list_filter = ("action", "company")
-
-
-@admin.register(OperationKey)
-class OperationKeyAdmin(InspectOnlyAdmin):
-    list_display = ("created_at", "company", "command", "result_label", "actor")
-    list_filter = ("command",)
+@admin.register(Document)
+class DocumentAdmin(ReadOnlyAdmin):
+    list_display = ("number", "kind", "state", "effective_date", "posted_at")
+    list_filter = ("kind", "state")
+    search_fields = ("number",)

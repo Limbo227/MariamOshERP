@@ -1,0 +1,33 @@
+{% extends "ui/shell.html" %}
+{% block title %}Места хранения — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Места хранения{% endblock %}
+{% block heading %}Места хранения{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex items-end gap-2">
+      <label class="text-sm">Склад
+        <select name="warehouse" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for warehouse in warehouses %}<option value="{{ warehouse.pk }}" {% if warehouse_id == warehouse.pk|stringformat:"s" %}selected{% endif %}>{{ warehouse.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Показать</button>
+    </form>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'location_create' %}">Добавить место</a>
+  </div>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr><th class="px-3 py-2 font-medium">Склад</th><th class="px-3 py-2 font-medium">Место</th><th class="px-3 py-2 font-medium">Состояние</th></tr></thead>
+      <tbody>
+        {% for location in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2">{{ location.warehouse.name }}</td>
+            <td class="px-3 py-2"><a class="underline" href="{% url 'location_detail' location.pk %}">{{ location.name }}</a></td>
+            <td class="px-3 py-2">{% if location.active %}Активно{% else %}Отключено{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="3" class="px-3 py-8 text-center text-slate-500">Мест хранения нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

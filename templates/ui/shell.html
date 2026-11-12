@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load ui_format %}
+{% block body %}
+  <div class="min-h-screen md:flex">
+    <input id="nav-toggle" type="checkbox" class="peer sr-only">
+    <aside class="hidden w-full shrink-0 flex-col bg-slate-950 text-slate-300 peer-checked:flex md:sticky md:top-0 md:flex md:h-screen md:w-72 md:overflow-y-auto">
+      <div class="border-b border-slate-800 px-4 py-5">
+        <a href="{% url 'dashboard' %}" class="text-sm font-semibold tracking-wide text-white no-underline">MARIAM-OSH ERP</a>
+      </div>
+      <nav class="flex flex-1 flex-col gap-0.5 px-3 py-4" aria-label="Разделы">
+        <a class="{% nav_class request 'dashboard' %}" href="{% url 'dashboard' %}">Главная</a>
+        <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Справочники</p>
+        <a class="{% nav_class request 'company' %}" href="{% url 'company' %}">Организация</a>
+        <a class="{% nav_class request 'product_list' 'product_create' 'product_detail' 'product_edit' %}" href="{% url 'product_list' %}">Товары</a>
+        <a class="{% nav_class request 'party_list' 'party_create' 'party_detail' 'party_edit' %}" href="{% url 'party_list' %}">Контрагенты</a>
+        <a class="{% nav_class request 'warehouse_list' 'warehouse_create' 'warehouse_detail' 'warehouse_edit' %}" href="{% url 'warehouse_list' %}">Склады</a>
+        <a class="{% nav_class request 'location_list' 'location_create' 'location_detail' 'location_edit' %}" href="{% url 'location_list' %}">Места хранения</a>
+        <a class="{% nav_class request 'bank_list' 'account_create' 'account_detail' 'account_edit' %}" href="{% url 'bank_list' %}">Банковские счета</a>
+        <a class="{% nav_class request 'cash_list' %}" href="{% url 'cash_list' %}">Кассы</a>
+        <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Закупки</p>
+        <a class="{% nav_class request 'purchase_list' 'purchase_create' 'purchase_detail' %}" href="{% url 'purchase_list' %}">Все закупки</a>
+        <a class="{% nav_class request 'contract_list' 'contract_create' 'contract_detail' 'contract_edit' 'specification_create' %}" href="{% url 'contract_list' %}">Контракты</a>
+        <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Поставки</p>
+        <a class="{% nav_class request 'shipment_list' 'shipment_create' 'shipment_detail' %}" href="{% url 'shipment_list' %}">Мониторинг поставок</a>
+        <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Приёмка</p>
+        <a class="{% nav_class request 'receipt_create' %}" href="{% url 'receipt_create' %}">Новая приёмка</a>
+        <a class="{% nav_class request 'receipt_list' 'receipt_detail' %}" href="{% url 'receipt_list' %}">История приёмок</a>
+        <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Склад</p>
+        <a class="{% nav_class request 'stock_list' %}" href="{% url 'stock_list' %}">Остатки</a>
+        <a class="{% nav_class request 'move_list' %}" href="{% url 'move_list' %}">Движения товаров</a>
+        <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Финансы</p>
+        <a class="{% nav_class request 'finance_home' 'money_detail' %}" href="{% url 'finance_home' %}">Обзор финансов</a>
+        <a class="{% nav_class request 'payment_create' %}" href="{% url 'payment_create' %}">Оплаты поставщикам</a>
+        <a class="{% nav_class request 'transfer_create' %}" href="{% url 'transfer_create' %}">Перевод</a>
+        <a class="{% nav_class request 'convert_create' %}" href="{% url 'convert_create' %}">Конвертация валют</a>
+        <a class="{% nav_class request 'expense_create' %}" href="{% url 'expense_create' %}">Расходы</a>
+        <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Отчёты</p>
+        <a class="{% nav_class request 'report_procurement' %}" href="{% url 'report_procurement' %}">Закупки</a>
+        <a class="{% nav_class request 'report_shipments' %}" href="{% url 'report_shipments' %}">Поставки</a>
+        <a class="{% nav_class request 'report_suppliers' %}" href="{% url 'report_suppliers' %}">Долги поставщикам</a>
+        <a class="{% nav_class request 'report_money' %}" href="{% url 'report_money' %}">Банк и касса</a>
+      </nav>
+    </aside>
+    <div class="min-w-0 flex-1">
+      <header class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+        <div class="flex min-w-0 items-center gap-3">
+          <label for="nav-toggle" class="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-slate-300 px-3 text-sm md:hidden">Меню</label>
+          <div class="min-w-0">
+            <p class="truncate text-xs text-slate-500">{% block breadcrumb %}Главная{% endblock %}</p>
+            <h1 class="truncate text-lg font-semibold">{% block heading %}Обзор{% endblock %}</h1>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="hidden text-slate-600 sm:inline">{{ user.get_username }}</span>
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="min-h-11 rounded-md border border-slate-300 px-3 hover:bg-slate-50">Выйти</button>
+          </form>
+        </div>
+      </header>
+      <main class="px-4 py-6">
+        {% if messages %}
+          <ul class="mb-4 space-y-2">
+            {% for message in messages %}
+              <li class="rounded-md border px-3 py-2 text-sm {% if 'error' in message.tags %}border-red-300 bg-red-50 text-red-900{% elif 'success' in message.tags %}border-emerald-300 bg-emerald-50 text-emerald-900{% else %}border-amber-300 bg-amber-50{% endif %}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  <script>
+    document.addEventListener("submit", function (event) {
+      var form = event.target;
+      if (!(form instanceof HTMLFormElement)) return;
+      var submitter = event.submitter;
+      var text = submitter && submitter.getAttribute("data-confirm");
+      if (!text) text = form.getAttribute("data-confirm");
+      if (text && !window.confirm(text)) {
+        event.preventDefault();
+        return;
+      }
+      if (form.dataset.submitted === "1") {
+        event.preventDefault();
+        return;
+      }
+      form.dataset.submitted = "1";
+    });
+  </script>
+{% endblock %}

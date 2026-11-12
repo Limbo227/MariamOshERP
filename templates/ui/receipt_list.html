@@ -1,0 +1,41 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Приёмки — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Приёмка / История{% endblock %}
+{% block heading %}История приёмок{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-end gap-2">
+      <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">Поставщик
+        <select name="supplier" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for row in suppliers %}<option value="{{ row.pk }}" {% if supplier == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="text-sm">С<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">По<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Найти</button>
+    </form>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'receipt_create' %}">Новая приёмка</a>
+  </div>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2">Номер</th><th class="px-3 py-2">Дата</th><th class="px-3 py-2">Поставщик</th><th class="px-3 py-2">Склад</th><th class="px-3 py-2 text-right">Принято</th>
+      </tr></thead>
+      <tbody>
+        {% for receipt in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'receipt_detail' receipt.pk %}">{{ receipt.document.number }}</a></td>
+            <td class="px-3 py-2">{{ receipt.document.effective_date|date:"d.m.Y" }}</td>
+            <td class="px-3 py-2">{{ receipt.supplier.name }}</td>
+            <td class="px-3 py-2">{{ receipt.warehouse.name }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ receipt.accepted_qty|qty }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">Приёмок нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

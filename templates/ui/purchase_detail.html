@@ -1,0 +1,60 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}{{ order.document.number }} — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Закупки / {{ order.document.number }}{% endblock %}
+{% block heading %}{{ order.document.number }}{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap gap-2">
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'shipment_create' %}?order={{ order.pk }}">Добавить поставку</a>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'receipt_create' %}?supplier={{ order.supplier_id }}&order={{ order.pk }}">Принять товар</a>
+    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'payment_create' %}?supplier={{ order.supplier_id }}">Оплатить поставщику</a>
+  </div>
+  <dl class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
+    <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{{ order.supplier.name }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Дата</dt><dd>{{ order.document.effective_date|date:"d.m.Y" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Валюта</dt><dd>{{ order.currency }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Договор</dt><dd>{% if order.contract %}<a class="underline" href="{% url 'contract_detail' order.contract.pk %}">{{ order.contract.number }}</a>{% else %}Без договора{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Спецификация</dt><dd>{{ order.specification_number|default:"—" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if reversed %}Сторнирована{% else %}Проведена{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">План</dt><dd class="tabular-nums">{{ order.fig.planned_qty|qty }} / {{ order.fig.planned_amount|money }} {{ order.currency }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Отправлено</dt><dd class="tabular-nums">{{ order.fig.dispatched_qty|qty }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Принято</dt><dd class="tabular-nums">{{ order.fig.accepted_qty|qty }}, осталось {{ order.fig.outstanding_qty|qty }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Принято на сумму</dt><dd class="tabular-nums">{{ order.fig.accepted_amount|money }} {{ order.currency }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Оплачено по закупке</dt><dd class="tabular-nums">{{ order.fig.paid|money }} {{ order.currency }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Остаток долга по закупке</dt><dd class="tabular-nums">{{ order.fig.outstanding|money }} {{ order.currency }}</dd></div>
+  </dl>
+  {% if order.document.note %}<p class="mb-4 text-sm text-slate-600">{{ order.document.note }}</p>{% endif %}
+  <h2 class="mb-2 text-base font-semibold">Строки</h2>
+  <div class="mb-6 overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr><th class="px-3 py-2">Товар</th><th class="px-3 py-2 text-right">Количество</th><th class="px-3 py-2 text-right">Цена</th><th class="px-3 py-2 text-right">Сумма</th></tr></thead>
+      <tbody>{% for line in lines %}<tr class="border-t border-slate-100"><td class="px-3 py-2">{{ line.product.name }}</td><td class="px-3 py-2 text-right tabular-nums">{{ line.quantity|qty }} {{ line.product.get_unit_display }}</td><td class="px-3 py-2 text-right tabular-nums">{{ line.price|money }}</td><td class="px-3 py-2 text-right tabular-nums">{{ line.amount|money }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <h2 class="mb-2 text-base font-semibold">Поставки</h2>
+  <div class="mb-6 overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm"><thead class="bg-slate-50 text-left"><tr><th class="px-3 py-2">Вагон</th><th class="px-3 py-2 text-right">Отправлено</th><th class="px-3 py-2">Статус</th></tr></thead>
+      <tbody>{% for shipment in shipments %}<tr class="border-t"><td class="px-3 py-2"><a class="underline" href="{% url 'shipment_detail' shipment.pk %}">{{ shipment.wagon_number|default:"Без номера" }}</a></td><td class="px-3 py-2 text-right tabular-nums">{{ shipment.quantity|qty }}</td><td class="px-3 py-2">{{ shipment.get_status_display }}</td></tr>{% empty %}<tr><td colspan="3" class="px-3 py-6 text-center text-slate-500">Поставок нет.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <h2 class="mb-2 text-base font-semibold">Приёмки</h2>
+  <div class="mb-6 overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm"><thead class="bg-slate-50 text-left"><tr><th class="px-3 py-2">Номер</th><th class="px-3 py-2">Дата</th><th class="px-3 py-2">Склад</th></tr></thead>
+      <tbody>{% for receipt in receipts %}<tr class="border-t"><td class="px-3 py-2"><a class="underline" href="{% url 'receipt_detail' receipt.pk %}">{{ receipt.document.number }}</a></td><td class="px-3 py-2">{{ receipt.document.effective_date|date:"d.m.Y" }}</td><td class="px-3 py-2">{{ receipt.warehouse.name }}</td></tr>{% empty %}<tr><td colspan="3" class="px-3 py-6 text-center text-slate-500">Приёмок нет.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <h2 class="mb-2 text-base font-semibold">Долг и оплаты по этой закупке</h2>
+  <div class="mb-6 overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm"><thead class="bg-slate-50 text-left"><tr><th class="px-3 py-2">Документ</th><th class="px-3 py-2">Сторона</th><th class="px-3 py-2 text-right">Сумма</th><th class="px-3 py-2 text-right">Остаток</th></tr></thead>
+      <tbody>{% for row in debts %}<tr class="border-t"><td class="px-3 py-2">{{ row.item.document.number }}</td><td class="px-3 py-2">{{ row.item.get_side_display }}</td><td class="px-3 py-2 text-right tabular-nums">{{ row.item.amount|money }} {{ row.item.currency }}</td><td class="px-3 py-2 text-right tabular-nums">{{ row.left|money }}</td></tr>{% empty %}<tr><td colspan="4" class="px-3 py-6 text-center text-slate-500">Открытых позиций по закупке нет.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <h2 class="mb-2 text-base font-semibold">Деньги</h2>
+  <ul class="mb-6 space-y-1 text-sm">{% for payment in payments %}<li><a class="underline" href="{% url 'money_detail' payment.pk %}">{{ payment.operation.name }} {{ payment.document.number }}</a> — {{ payment.amount|money }} {{ payment.account.currency }}</li>{% empty %}<li class="text-slate-500">Связанных денежных документов нет.</li>{% endfor %}</ul>
+  <h2 class="mb-2 text-base font-semibold">Позиция поставщика по валютам</h2>
+  <ul class="text-sm">
+    {% for currency, bucket in position.items %}
+      <li>{{ currency }}: долг {{ bucket.we_owe|money }}, аванс {{ bucket.they_owe|money }}</li>
+    {% empty %}<li class="text-slate-500">Открытых сумм по поставщику нет.</li>{% endfor %}
+  </ul>
+{% endblock %}

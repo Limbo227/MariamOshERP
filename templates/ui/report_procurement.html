@@ -1,0 +1,45 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Отчёт по закупкам — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Отчёты / Закупки{% endblock %}
+{% block heading %}Отчёт по закупкам{% endblock %}
+{% block content %}
+  <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
+    <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+    <label class="text-sm">Поставщик
+      <select name="supplier" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in suppliers %}<option value="{{ row.pk }}" {% if supplier == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Валюта
+      <select name="currency" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for value, label in currencies %}<option value="{{ value }}" {% if currency == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="reversed" value="1"> Показать сторно</label>
+    <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Показать</button>
+  </form>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2">Номер</th><th class="px-3 py-2">Поставщик</th><th class="px-3 py-2">Валюта</th><th class="px-3 py-2 text-right">План</th><th class="px-3 py-2 text-right">Принято</th><th class="px-3 py-2 text-right">Долг</th><th class="px-3 py-2 text-right">Оплачено</th>
+      </tr></thead>
+      <tbody>
+        {% for order in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'purchase_detail' order.pk %}">{{ order.document.number }}</a></td>
+            <td class="px-3 py-2">{{ order.supplier.name }}</td>
+            <td class="px-3 py-2">{{ order.currency }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.planned_qty|qty }} / {{ order.fig.planned_amount|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.accepted_qty|qty }} / {{ order.fig.accepted_amount|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.outstanding|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.paid|money }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="7" class="px-3 py-8 text-center text-slate-500">Закупок нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

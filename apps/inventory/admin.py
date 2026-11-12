@@ -1,88 +1,46 @@
 from django.contrib import admin
 
+from apps.core.admin import ReadOnlyAdmin
 from apps.inventory.models import (
-    AdjustmentLine,
-    GoodsReceipt,
-    InventoryLot,
-    OpeningBalance,
-    OpeningLine,
-    ReceiptLine,
-    StockAdjustment,
-    StockLedgerEntry,
-    StockPostingSource,
+    Product,
+    ProductCategory,
+    StockMove,
     StorageLocation,
+    UnitOfMeasure,
     Warehouse,
 )
 
 
-class InspectOnlyAdmin(admin.ModelAdmin):
-    def has_add_permission(self, request):
-        return False
+@admin.register(ProductCategory)
+class ProductCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "code", "role", "active")
+    list_filter = ("role", "active")
+    search_fields = ("name", "code")
 
-    def has_change_permission(self, request, obj=None):
-        return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+@admin.register(UnitOfMeasure)
+class UnitOfMeasureAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "active")
 
-    def get_readonly_fields(self, request, obj=None):
-        return [field.name for field in self.model._meta.fields]
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ("sku", "name", "category", "kind", "unit", "unit_weight_kg", "package_kg", "active")
+    list_filter = ("kind", "unit", "active")
+    search_fields = ("sku", "name")
 
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
-    list_display = ("name", "kind", "company")
-    list_filter = ("kind", "company")
+    list_display = ("code", "name", "kind", "active")
 
 
 @admin.register(StorageLocation)
 class StorageLocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "warehouse", "active", "is_default")
-    list_filter = ("warehouse", "active")
+    list_display = ("name", "warehouse", "active")
+    list_filter = ("warehouse",)
 
 
-@admin.register(OpeningBalance)
-class OpeningBalanceAdmin(InspectOnlyAdmin):
-    list_display = ("reference", "company", "warehouse", "effective_date", "state", "actor")
-    list_filter = ("state", "company")
-
-
-@admin.register(OpeningLine)
-class OpeningLineAdmin(InspectOnlyAdmin):
-    list_display = ("document", "product", "location", "quantity", "bags", "basis")
-
-
-@admin.register(StockPostingSource)
-class StockPostingSourceAdmin(InspectOnlyAdmin):
-    list_display = ("opening_line",)
-
-
-@admin.register(StockLedgerEntry)
-class StockLedgerEntryAdmin(InspectOnlyAdmin):
-    list_display = ("effective_date", "company", "product", "location", "effect", "quantity", "bags")
-    list_filter = ("effect", "company")
-
-
-@admin.register(GoodsReceipt)
-class GoodsReceiptAdmin(InspectOnlyAdmin):
-    list_display = ("reference", "company", "supplier", "effective_date", "state")
-
-
-@admin.register(ReceiptLine)
-class ReceiptLineAdmin(InspectOnlyAdmin):
-    list_display = ("document", "product", "location", "quantity")
-
-
-@admin.register(InventoryLot)
-class InventoryLotAdmin(InspectOnlyAdmin):
-    list_display = ("product", "batch_reference")
-
-
-@admin.register(StockAdjustment)
-class StockAdjustmentAdmin(InspectOnlyAdmin):
-    list_display = ("reason", "company", "effective_date", "state")
-
-
-@admin.register(AdjustmentLine)
-class AdjustmentLineAdmin(InspectOnlyAdmin):
-    list_display = ("document", "product", "location", "quantity")
+@admin.register(StockMove)
+class StockMoveAdmin(ReadOnlyAdmin):
+    list_display = ("effective_date", "product", "location", "qty_delta", "bags_delta", "document")

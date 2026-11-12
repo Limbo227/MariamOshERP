@@ -1,0 +1,41 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Договор {{ contract.number }} — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Закупки / Договоры / {{ contract.number }}{% endblock %}
+{% block heading %}Договор {{ contract.number }}{% endblock %}
+{% block content %}
+  <div class="mb-4 flex gap-2">
+    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'contract_edit' contract.pk %}">Изменить</a>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'specification_create' contract.pk %}">Добавить спецификацию</a>
+  </div>
+  <dl class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+    <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{{ contract.supplier.name }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Дата</dt><dd>{{ contract.contract_date|date:"d.m.Y" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if contract.active %}Действует{% else %}Закрыт{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Описание</dt><dd>{{ contract.description|default:"—" }}</dd></div>
+  </dl>
+  <h2 class="mb-2 text-base font-semibold">Спецификации</h2>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2">Номер</th><th class="px-3 py-2">Товар</th><th class="px-3 py-2 text-right">План, кол-во</th><th class="px-3 py-2 text-right">План, сумма</th><th class="px-3 py-2">Валюта</th><th class="px-3 py-2 text-right">Отправлено</th><th class="px-3 py-2 text-right">Принято</th><th class="px-3 py-2 text-right">Долг по приёмке</th><th class="px-3 py-2 text-right">Оплачено</th><th class="px-3 py-2 text-right">Остаток</th>
+      </tr></thead>
+      <tbody>
+        {% for spec in specs %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'purchase_detail' spec.pk %}">{{ spec.specification_number }}</a></td>
+            <td class="px-3 py-2">{{ spec.fig.products|join:", " }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.planned_qty|qty }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.planned_amount|money }}</td>
+            <td class="px-3 py-2">{{ spec.currency }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.dispatched_qty|qty }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_qty|qty }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_amount|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.paid|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.outstanding|money }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="10" class="px-3 py-8 text-center text-slate-500">Спецификаций нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Товары — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Товары{% endblock %}
+{% block heading %}Товары{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-end gap-2">
+      <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">Тип
+        <select name="kind" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for value, label in kinds %}<option value="{{ value }}" {% if kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="text-sm">Состояние
+        <select name="active" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          <option value="1" {% if active == "1" %}selected{% endif %}>Активные</option>
+          <option value="0" {% if active == "0" %}selected{% endif %}>Отключённые</option>
+        </select>
+      </label>
+      <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Найти</button>
+    </form>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'product_create' %}">Добавить товар</a>
+  </div>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="sticky top-0 bg-slate-50 text-left text-slate-500">
+        <tr>
+          <th class="px-3 py-2 font-medium">Код</th>
+          <th class="px-3 py-2 font-medium">Название</th>
+          <th class="px-3 py-2 font-medium">Тип</th>
+          <th class="px-3 py-2 font-medium">Единица</th>
+          <th class="px-3 py-2 font-medium">Фасовка</th>
+          <th class="px-3 py-2 font-medium">Состояние</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2">{{ product.sku }}</td>
+            <td class="px-3 py-2"><a class="underline" href="{% url 'product_detail' product.pk %}">{{ product.name }}</a></td>
+            <td class="px-3 py-2">{{ product.get_kind_display }}</td>
+            <td class="px-3 py-2">{{ product.get_unit_display }}</td>
+            <td class="px-3 py-2">{% if product.package_kg %}{{ product.package_kg|qty }} кг{% if product.sack %} / {{ product.sack.name }}{% endif %}{% else %}—{% endif %}</td>
+            <td class="px-3 py-2">{% if product.active %}Активен{% else %}Отключён{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="px-3 py-8 text-center text-slate-500">Товаров нет.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

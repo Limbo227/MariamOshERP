@@ -1,0 +1,18 @@
+{% extends "ui/shell.html" %}
+{% block title %}{{ party.name }} — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Контрагенты{% endblock %}
+{% block heading %}{{ party.name }}{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap gap-2">
+    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'party_edit' party.pk %}">Изменить</a>
+    <form method="post" action="{% url 'party_toggle' party.pk %}">{% csrf_token %}<button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">{% if party.active %}Отключить{% else %}Включить{% endif %}</button></form>
+    {% if party.is_supplier %}<a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'purchase_create' %}">Новая закупка</a>{% endif %}
+  </div>
+  <dl class="grid max-w-3xl gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+    <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{% if party.is_supplier %}Да{% else %}Нет{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Покупатель</dt><dd>{% if party.is_customer %}Да{% else %}Нет{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Сотрудник</dt><dd>{% if party.is_employee %}Да{% else %}Нет{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if party.active %}Активен{% else %}Отключён{% endif %}</dd></div>
+    <div class="sm:col-span-2"><dt class="text-xs text-slate-500">Заметка</dt><dd>{{ party.note|default:"—" }}</dd></div>
+  </dl>
+{% endblock %}

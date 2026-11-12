@@ -1,0 +1,10 @@
+{% extends "ui/shell.html" %}
+{% block title %}Склад — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Склады{% endblock %}
+{% block heading %}{% if warehouse %}{{ warehouse.name }}{% else %}Новый склад{% endif %}{% endblock %}
+{% block content %}
+  <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+    {% csrf_token %}{% include "ui/_form_fields.html" %}
+    <button class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white">Сохранить</button>
+  </form>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Долги поставщикам — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Отчёты / Долги поставщикам{% endblock %}
+{% block heading %}Долги и авансы поставщикам{% endblock %}
+{% block content %}
+  <p class="mb-4 text-sm text-slate-600">Каждая валюта показана отдельно. Долг — мы должны. Аванс — поставщик должен нам.</p>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2">Поставщик</th><th class="px-3 py-2">Валюта</th><th class="px-3 py-2 text-right">Долг</th><th class="px-3 py-2 text-right">Аванс</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'party_detail' row.party.pk %}">{{ row.party.name }}</a></td>
+            <td class="px-3 py-2">{{ row.currency }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ row.payable|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ row.advance|money }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Открытых сумм нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

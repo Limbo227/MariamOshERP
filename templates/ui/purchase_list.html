@@ -1,0 +1,54 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Закупки — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Закупки{% endblock %}
+{% block heading %}Все закупки{% endblock %}
+{% block content %}
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-end gap-2">
+      <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">Поставщик
+        <select name="supplier" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for row in suppliers %}<option value="{{ row.pk }}" {% if supplier == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="text-sm">С<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">По<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      <label class="text-sm">Состояние
+        <select name="status" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          <option value="open" {% if status == "open" %}selected{% endif %}>Без сторно</option>
+          <option value="reversed" {% if status == "reversed" %}selected{% endif %}>Сторнированные</option>
+        </select>
+      </label>
+      <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Найти</button>
+    </form>
+    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'purchase_create' %}">Новая закупка</a>
+  </div>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="sticky top-0 bg-slate-50 text-left text-slate-500"><tr>
+        <th class="px-3 py-2 font-medium">Номер</th><th class="px-3 py-2 font-medium">Дата</th><th class="px-3 py-2 font-medium">Поставщик</th><th class="px-3 py-2 font-medium">Договор</th><th class="px-3 py-2 font-medium">Спецификация</th><th class="px-3 py-2 font-medium">Валюта</th><th class="px-3 py-2 text-right font-medium">План, кол-во</th><th class="px-3 py-2 text-right font-medium">План, сумма</th><th class="px-3 py-2 text-right font-medium">Принято</th><th class="px-3 py-2 text-right font-medium">Принято, сумма</th><th class="px-3 py-2 font-medium">Состояние</th>
+      </tr></thead>
+      <tbody>
+        {% for order in page %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2"><a class="underline" href="{% url 'purchase_detail' order.pk %}">{{ order.document.number }}</a></td>
+            <td class="px-3 py-2">{{ order.document.effective_date|date:"d.m.Y" }}</td>
+            <td class="px-3 py-2">{{ order.supplier.name }}</td>
+            <td class="px-3 py-2">{% if order.contract %}{{ order.contract.number }}{% else %}—{% endif %}</td>
+            <td class="px-3 py-2">{{ order.specification_number|default:"—" }}</td>
+            <td class="px-3 py-2">{{ order.currency }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.planned_qty|qty }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.planned_amount|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.accepted_qty|qty }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ order.fig.accepted_amount|money }}</td>
+            <td class="px-3 py-2">{% if order.fig and order.document.reversal %}Сторнирована{% else %}Проведена{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="11" class="px-3 py-8 text-center text-slate-500">Закупок нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}
