@@ -10,31 +10,16 @@ DEFAULT_LOCATION_NAME = "Основное"
 
 
 class ProductCategory(models.Model):
-    """User-managed product type. `role` keeps the technical inventory rules."""
-
-    class Role(models.TextChoices):
-        WHEAT = "WHEAT", "Пшеница"
-        SACK = "SACK", "Пустой мешок"
-        MATERIAL = "MATERIAL", "Материал"
-        FLOUR = "FLOUR", "Мука"
-        BYPRODUCT = "BYPRODUCT", "Побочный продукт"
-        OTHER = "OTHER", "Прочее"
+    """A name the user gives to a group of products. It does not change posting rules."""
 
     name = models.CharField("Название", max_length=80)
     code = models.CharField("Код", max_length=40, unique=True)
     active = models.BooleanField("Активна", default=True)
     description = models.TextField("Описание", blank=True)
-    role = models.CharField("Техническая роль", max_length=12, choices=Role.choices, default=Role.OTHER)
 
     class Meta:
         db_table = "product_category"
         ordering = ["name"]
-        constraints = [
-            models.CheckConstraint(
-                condition=Q(role__in=["WHEAT", "SACK", "MATERIAL", "FLOUR", "BYPRODUCT", "OTHER"]),
-                name="category_role",
-            ),
-        ]
         verbose_name = "Категория товара"
         verbose_name_plural = "Категории товаров"
 
@@ -58,14 +43,6 @@ class UnitOfMeasure(models.Model):
 
 
 class Product(models.Model):
-    class Kind(models.TextChoices):
-        WHEAT = "WHEAT", "Пшеница"
-        SACK = "SACK", "Пустой мешок"
-        MATERIAL = "MATERIAL", "Материал"
-        FLOUR = "FLOUR", "Мука в мешках"
-        BYPRODUCT = "BYPRODUCT", "Побочный продукт"
-        OTHER = "OTHER", "Прочее"
-
     class Unit(models.TextChoices):
         PCS = "PCS", "шт"
         KG = "KG", "кг"
@@ -77,12 +54,11 @@ class Product(models.Model):
     category = models.ForeignKey(
         ProductCategory,
         null=True,
-        blank=True,
+        blank=False,
         on_delete=models.PROTECT,
         related_name="products",
         verbose_name="Категория",
     )
-    kind = models.CharField("Тип", max_length=12, choices=Kind.choices)
     unit = models.CharField("Единица", max_length=8, choices=Unit.choices, default=Unit.KG)
     unit_weight_kg = models.DecimalField(
         "Масса одной единицы, кг", max_digits=12, decimal_places=3, null=True, blank=True
@@ -97,28 +73,15 @@ class Product(models.Model):
         db_table = "product"
         ordering = ["name"]
         constraints = [
-            models.CheckConstraint(
-                condition=Q(kind__in=["WHEAT", "SACK", "MATERIAL", "FLOUR", "BYPRODUCT", "OTHER"]),
-                name="product_kind",
-            ),
             models.CheckConstraint(condition=Q(unit__in=["PCS", "KG", "L", "BAG"]), name="product_unit"),
             models.CheckConstraint(
                 condition=(
-                    Q(kind="FLOUR", unit="KG", package_kg__gt=0)
-                    | Q(kind="FLOUR", unit="BAG", package_kg__isnull=True, unit_weight_kg__gt=0)
-                    | (~Q(kind="FLOUR") & Q(package_kg__isnull=True))
+                    Q(unit="KG", package_kg__isnull=True)
+                    | Q(unit="KG", package_kg__gt=0)
+                    | (~Q(unit="KG") & Q(package_kg__isnull=True))
                 ),
                 name="product_package",
             ),
-            models.CheckConstraint(
-                condition=(~Q(kind__in=["WHEAT", "BYPRODUCT"]) | Q(unit="KG")),
-                name="mass_in_kg",
-            ),
-            models.CheckConstraint(
-                condition=(~Q(kind="FLOUR") | Q(unit__in=["KG", "BAG"])),
-                name="flour_unit",
-            ),
-            models.CheckConstraint(condition=(~Q(kind="SACK") | Q(unit="PCS")), name="sack_in_pieces"),
             models.CheckConstraint(
                 condition=Q(unit="KG", unit_weight_kg=1) | ~Q(unit="KG"),
                 name="kg_weight_is_one",
@@ -143,10 +106,6 @@ class Product(models.Model):
             raise ValidationError("Неизвестная единица измерения.")
         if self.sack_id and self.pk and self.sack_id == self.pk:
             raise ValidationError("Товар не может быть собственной упаковкой.")
-        if self.sack_id and self.sack.kind != self.Kind.SACK:
-            raise ValidationError("В качестве упаковки нужен пустой мешок.")
-        if self.kind != self.Kind.FLOUR and self.sack_id:
-            raise ValidationError("Пустой мешок задаётся для фасованной муки.")
         if self.unit == self.Unit.KG and self.unit_weight_kg != Decimal("1"):
             raise ValidationError("Для килограмма масса одной единицы всегда равна 1.")
         if self.unit == self.Unit.BAG and (self.unit_weight_kg is None or self.unit_weight_kg <= 0):
@@ -155,27 +114,16 @@ class Product(models.Model):
             raise ValidationError("Масса единицы должна быть больше нуля.")
         if self.pk and self.stock_moves.exists():
             previous = Product.objects.get(pk=self.pk)
-            locked = ("kind", "unit", "package_kg", "sack_id", "unit_weight_kg")
+            locked = ("category_id", "unit", "package_kg", "sack_id", "unit_weight_kg")
             if any(getattr(previous, field) != getattr(self, field) for field in locked):
                 raise ValidationError(
-                    "У товара с движениями нельзя менять тип, единицу, массу единицы, фасовку или мешок."
+                    "У товара с движениями нельзя менять категорию, единицу, массу единицы, фасовку или мешок."
                 )
 
     def _prepare_identity(self):
-        if self.category_id:
-            self.kind = self.category.role
-        elif self.kind:
-            category = ProductCategory.objects.filter(code=self.kind).first()
-            if category is None:
-                category = ProductCategory.objects.filter(role=self.kind, active=True).order_by("pk").first()
-            if category is None:
-                raise ValidationError("Для типа товара нет категории. Сначала заполните справочник категорий.")
-            self.category = category
         if self.unit == self.Unit.KG:
             self.unit_weight_kg = Decimal("1.000")
-        elif self.unit == self.Unit.BAG and self.kind == self.Kind.FLOUR:
-            self.package_kg = None
-        elif self.unit != self.Unit.KG and self.kind != self.Kind.FLOUR:
+        elif self.unit != self.Unit.KG:
             self.package_kg = None
 
     def save(self, *args, **kwargs):
@@ -195,6 +143,14 @@ class Warehouse(models.Model):
     code = models.SlugField("Код", unique=True)
     name = models.CharField("Название", max_length=80)
     kind = models.CharField("Тип", max_length=8, choices=Kind.choices)
+    category = models.ForeignKey(
+        ProductCategory,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="warehouses",
+        verbose_name="Категория",
+    )
     active = models.BooleanField("Активен", default=True)
 
     class Meta:

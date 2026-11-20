@@ -8,7 +8,7 @@
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left text-slate-500"><tr>
-        <th class="px-3 py-2 font-medium">Название</th><th class="px-3 py-2 font-medium">Валюта</th><th class="px-3 py-2 font-medium">Тип</th><th class="px-3 py-2 text-right font-medium">Остаток</th><th class="px-3 py-2 font-medium">Состояние</th>
+        <th class="px-3 py-2 font-medium">Название</th><th class="px-3 py-2 font-medium">Валюта</th><th class="px-3 py-2 font-medium">Тип</th><th class="px-3 py-2 text-right font-medium">Остаток</th><th class="px-3 py-2 font-medium">Состояние</th><th class="px-3 py-2 text-right font-medium">Действия</th>
       </tr></thead>
       <tbody>
         {% for account in accounts %}
@@ -18,8 +18,9 @@
             <td class="px-3 py-2">{{ account.get_kind_display }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ account.current_balance|money }}</td>
             <td class="px-3 py-2">{% if account.active %}Активен{% else %}Отключён{% endif %}</td>
+            <td class="px-3 py-2">{% url 'account_edit' account.pk as edit_url %}{% url 'account_delete' account.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить счёт? Если по нему есть движения, он будет отключён." %}</td>
           </tr>
-        {% empty %}<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">Счетов нет.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="6" class="px-3 py-8 text-center text-slate-500">Счетов нет.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

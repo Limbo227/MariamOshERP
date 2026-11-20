@@ -1,0 +1,24 @@
+{% extends "ui/shell.html" %}
+{% block title %}Категории — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Категории{% endblock %}
+{% block heading %}Категории товаров{% endblock %}
+{% block content %}
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">Категория группирует товары. Склад с этой категорией принимает только такие товары. Склад без категории принимает все.</p>
+  <p class="mb-4"><a class="btn-primary" href="{% url 'category_create' %}">Новая категория</a></p>
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead class="bg-slate-50"><tr><th>Название</th><th>Код</th><th>Состояние</th><th class="text-right">Действия</th></tr></thead>
+      <tbody>
+        {% for row in page %}
+          <tr>
+            <td><a class="underline" href="{% url 'category_edit' row.pk %}">{{ row.name }}</a></td>
+            <td>{{ row.code }}</td>
+            <td>{% if row.active %}Действует{% else %}Отключена{% endif %}</td>
+            <td>{% url 'category_edit' row.pk as edit_url %}{% url 'category_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить категорию? Если в ней есть товары, она будет отключена." %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Категорий нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

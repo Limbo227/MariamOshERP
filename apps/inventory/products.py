@@ -19,26 +19,20 @@ def ensure_reference_units():
 
 
 @transaction.atomic
-def save_category(*, name, code="", description="", active=True, role=ProductCategory.Role.OTHER, category=None, actor=None):
+def save_category(*, name, code="", description="", active=True, category=None, actor=None):
     name = (name or "").strip()
     if not name:
         raise ValidationError("Укажите название категории.")
-    if role not in ProductCategory.Role.values:
-        raise ValidationError("Неизвестная техническая роль категории.")
     created = category is None
     if created:
         category = ProductCategory(
             name=name,
             code=(code or "").strip() or _code(ProductCategory, name, "CAT"),
-            role=role,
         )
     else:
         category = ProductCategory.objects.select_for_update().get(pk=category.pk)
         if code:
             category.code = code.strip()
-        if category.products.exists() and category.role != role:
-            raise ValidationError("Нельзя менять техническую роль категории, в которой уже есть товары.")
-        category.role = role
     category.name = name
     category.description = description or ""
     category.active = active
@@ -97,7 +91,6 @@ def save_product(
     product.package_kg = package_kg
     product.sack = sack
     product.active = active
-    product.kind = category.role
     product.save()
     write_audit(
         action=AuditEntry.Action.CREATED if created else AuditEntry.Action.UPDATED,

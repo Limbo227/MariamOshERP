@@ -4,17 +4,39 @@
 {% block breadcrumb %}Закупки / {{ order.document.number }}{% endblock %}
 {% block heading %}{{ order.document.number }}{% endblock %}
 {% block content %}
-  <div class="mb-4 flex flex-wrap gap-2">
-    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'shipment_create' %}?order={{ order.pk }}">Добавить поставку</a>
-    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'receipt_create' %}?supplier={{ order.supplier_id }}&order={{ order.pk }}">Принять товар</a>
-    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'payment_create' %}?supplier={{ order.supplier_id }}">Оплатить поставщику</a>
+  {% include "ui/_buying_tabs.html" %}
+  <div class="mb-3 flex flex-wrap items-center gap-2">
+    <a class="text-sm text-teal-800 underline" href="{{ back_url }}">Назад</a>
+    {% url 'purchase_edit' order.pk as edit_url %}{% if order.contract_id %}{% url 'purchase_delete' order.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить спецификацию? Если есть поставки или приёмки, удаление будет отклонено." %}{% else %}{% include "ui/_actions.html" with edit=edit_url %}{% endif %}
   </div>
+  <div class="mb-4 flex flex-wrap gap-2">
+    {% if order.contract_id %}
+      <a class="btn-primary" href="{% url 'shipment_create' %}?order={{ order.pk }}">Добавить поставку</a>
+      <span class="self-center text-xs text-slate-500">Приёмка создаётся проведением поставки, отдельной кнопки нет.</span>
+    {% elif not posted_shipments %}
+      <a class="btn-primary" href="{% url 'receipt_create' %}?supplier={{ order.supplier_id }}&order={{ order.pk }}">Принять товар</a>
+    {% endif %}
+    <a class="btn-ghost" href="{% url 'payment_create' %}?supplier={{ order.supplier_id }}">Оплатить поставщику</a>
+  </div>
+  {% if order.contract_id %}
+    <form method="post" action="{% url 'specification_status' order.pk %}" class="mb-4 flex flex-wrap items-center gap-2">
+      {% csrf_token %}
+      <span class="chip {% if order.operational_status == 'COMPLETED' %}bg-slate-200 text-slate-700{% else %}bg-emerald-100 text-emerald-900{% endif %}">{{ order.get_operational_status_display }}</span>
+      <span class="text-sm text-slate-600">Допуск {{ order.tolerance_percent|qty }}%. Закрытие не меняет склад и долг.</span>
+      {% if order.operational_status == "COMPLETED" %}
+        <button name="action" value="reopen" class="btn-ghost">Вернуть в работу</button>
+      {% else %}
+        <button name="action" value="complete" class="btn-ghost" data-confirm="Отметить спецификацию выполненной? Новые поставки будут закрыты, склад и долг не изменятся.">Выполнено</button>
+      {% endif %}
+    </form>
+  {% endif %}
   <dl class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
     <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{{ order.supplier.name }}</dd></div>
     <div><dt class="text-xs text-slate-500">Дата</dt><dd>{{ order.document.effective_date|date:"d.m.Y" }}</dd></div>
     <div><dt class="text-xs text-slate-500">Валюта</dt><dd>{{ order.currency }}</dd></div>
     <div><dt class="text-xs text-slate-500">Договор</dt><dd>{% if order.contract %}<a class="underline" href="{% url 'contract_detail' order.contract.pk %}">{{ order.contract.number }}</a>{% else %}Без договора{% endif %}</dd></div>
     <div><dt class="text-xs text-slate-500">Спецификация</dt><dd>{{ order.specification_number|default:"—" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Условие поставки</dt><dd>{{ order.delivery_term|default:"—" }}</dd></div>
     <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if reversed %}Сторнирована{% else %}Проведена{% endif %}</dd></div>
     <div><dt class="text-xs text-slate-500">План</dt><dd class="tabular-nums">{{ order.fig.planned_qty|qty }} / {{ order.fig.planned_amount|money }} {{ order.currency }}</dd></div>
     <div><dt class="text-xs text-slate-500">Отправлено</dt><dd class="tabular-nums">{{ order.fig.dispatched_qty|qty }}</dd></div>

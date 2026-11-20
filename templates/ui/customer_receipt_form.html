@@ -1,0 +1,16 @@
+{% extends "ui/shell.html" %}
+{% block title %}Поступление от покупателя — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Финансы / Поступление{% endblock %}
+{% block heading %}Поступление от покупателя{% endblock %}
+{% block content %}
+  {% include "ui/_finance_tabs.html" %}
+  <p class="mb-4 max-w-2xl text-sm text-slate-600">Записывает поступление денег на выбранный счёт. Накладная, отгрузка и склад не создаются. Открытая дебиторка этого покупателя в валюте счёта закрывается автоматически, начиная с более ранней.</p>
+  <form method="post" class="card max-w-xl space-y-4 p-5">
+    {% csrf_token %}
+    {% include "ui/_form_fields.html" %}
+    <div class="flex flex-wrap gap-2">
+      <button class="btn-primary" data-confirm="Провести поступление?">Провести</button>
+      <a class="btn-ghost" href="{% url 'finance_home' %}">Отмена</a>
+    </div>
+  </form>
+{% endblock %}

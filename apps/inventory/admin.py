@@ -13,8 +13,8 @@ from apps.inventory.models import (
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "role", "active")
-    list_filter = ("role", "active")
+    list_display = ("name", "code", "active")
+    list_filter = ("active",)
     search_fields = ("name", "code")
 
 
@@ -25,14 +25,14 @@ class UnitOfMeasureAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("sku", "name", "category", "kind", "unit", "unit_weight_kg", "package_kg", "active")
-    list_filter = ("kind", "unit", "active")
+    list_display = ("sku", "name", "category", "unit", "unit_weight_kg", "package_kg", "active")
+    list_filter = ("category", "unit", "active")
     search_fields = ("sku", "name")
 
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "kind", "active")
+    list_display = ("code", "name", "kind", "category", "active")
 
 
 @admin.register(StorageLocation)

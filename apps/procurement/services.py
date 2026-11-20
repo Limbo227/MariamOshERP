@@ -215,6 +215,34 @@ def update_specification(
 
 
 @transaction.atomic
+def delete_specification(order, *, actor=None):
+    """Remove a contract specification that has not moved stock or debt."""
+    from apps.inventory.models import ReceiptLine
+
+    order = PurchaseOrder.objects.select_for_update().select_related("document").get(pk=order.pk)
+    if not order.contract_id:
+        raise ValidationError("Удаляется спецификация по договору.")
+    posted_receipt = ReceiptLine.objects.filter(
+        purchase_line__order=order,
+        receipt__document__state=Document.State.POSTED,
+    ).exists()
+    if posted_receipt or order.shipments.filter(status=Shipment.State.POSTED).exists():
+        raise ValidationError("Есть проведённые поставки или приёмки. Сначала отмените их выполнение.")
+    if order.shipments.exists():
+        raise ValidationError("Сначала удалите поставки этой спецификации.")
+    if order.expenses.exists():
+        raise ValidationError("Сначала отвяжите расходы от этой спецификации.")
+    if order.open_items.exists():
+        raise ValidationError("По спецификации есть долг. Сначала отмените связанные приёмки.")
+    if ReceiptLine.objects.filter(purchase_line__order=order).exists():
+        raise ValidationError("По спецификации есть приёмка. Сначала отмените и удалите её.")
+    document = order.document
+    if document.state == Document.State.POSTED:
+        unpost_document(document, actor=actor, detail="Спецификация удаляется.")
+    delete_draft_document(document, actor=actor)
+
+
+@transaction.atomic
 def complete_specification(order, *, actor=None):
     order = PurchaseOrder.objects.select_for_update().get(pk=order.pk)
     order.operational_status = PurchaseOrder.OperationalStatus.COMPLETED
@@ -467,8 +495,8 @@ def receipt_quantity(product, weight_kg):
 
 
 def _bags_for(product, quantity):
-    if product.kind == Product.Kind.FLOUR and product.unit == Product.Unit.KG:
-        if product.package_kg is None or quantity % product.package_kg != 0:
+    if product.unit == Product.Unit.KG and product.package_kg:
+        if quantity % product.package_kg != 0:
             raise ValidationError("Масса поставки не кратна массе мешка.")
         return int(quantity / product.package_kg)
     return None
@@ -478,17 +506,13 @@ def resolve_warehouse(product, warehouse=None):
     if warehouse is not None:
         require_active(warehouse)
         return warehouse
-    finished = product.kind in (Product.Kind.FLOUR, Product.Kind.BYPRODUCT)
-    kind = Warehouse.Kind.FINISHED if finished else Warehouse.Kind.RAW
-    preferred_code = "fg" if finished else "raw"
-    rows = list(Warehouse.objects.filter(kind=kind, active=True).order_by("pk"))
-    if not rows:
-        raise ValidationError("Нет подходящего склада для приёмки поставки.")
-    if len(rows) == 1:
-        return rows[0]
-    preferred = [row for row in rows if row.code == preferred_code]
-    if len(preferred) == 1:
-        return preferred[0]
+    rows = list(Warehouse.objects.filter(active=True).order_by("pk"))
+    exact = [row for row in rows if row.category_id == product.category_id]
+    pool = exact or [row for row in rows if row.category_id is None]
+    if not pool:
+        raise ValidationError("Нет склада для категории этого товара.")
+    if len(pool) == 1:
+        return pool[0]
     raise ValidationError("Укажите склад: подходящих складов несколько.")
 
 

@@ -4,7 +4,8 @@
 {% block breadcrumb %}Финансы / Оплата поставщику{% endblock %}
 {% block heading %}Оплата поставщику{% endblock %}
 {% block content %}
-  <p class="mb-4 max-w-3xl text-sm text-slate-600">Склад не меняется. Сумма без распределения остаётся авансом: поставщик должен нам. Распределённая часть закрывает наш долг по выбранным закупкам.</p>
+  {% include "ui/_finance_tabs.html" %}
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">Склад не меняется. Сумма без распределения остаётся авансом: поставщик должен нам. Распределённая часть закрывает наш долг по выбранным закупкам. Автоматического распределения нет.</p>
   <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
     <label class="text-sm">Поставщик
       <select name="supplier" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">

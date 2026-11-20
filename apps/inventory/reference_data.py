@@ -24,8 +24,8 @@ def seed_units(model):
 
 
 def seed_categories(model):
-    for code, name, role, description in CATEGORIES:
+    for code, name, _role, description in CATEGORIES:
         model.objects.update_or_create(
             code=code,
-            defaults={"name": name, "role": role, "description": description, "active": True},
+            defaults={"name": name, "description": description, "active": True},
         )

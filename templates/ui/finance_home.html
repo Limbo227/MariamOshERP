@@ -2,15 +2,10 @@
 {% load ui_format %}
 {% block title %}Финансы — Мариам-Ош ERP{% endblock %}
 {% block breadcrumb %}Финансы{% endblock %}
-{% block heading %}Обзор финансов{% endblock %}
+{% block heading %}Журнал операций{% endblock %}
 {% block content %}
-  <p class="mb-4 max-w-3xl text-sm text-slate-600">Валюты не складываются. Оплата поставщику, перевод между своими счетами, обмен валюты и расход — разные операции.</p>
-  <div class="mb-4 flex flex-wrap gap-2">
-    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'payment_create' %}">Оплата поставщику</a>
-    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'transfer_create' %}">Перевод</a>
-    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'convert_create' %}">Обмен валюты</a>
-    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'expense_create' %}">Расход</a>
-  </div>
+  {% include "ui/_finance_tabs.html" %}
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">Валюты не складываются. Перевод между своими счетами не является расходом или доходом. Нераспределённая оплата поставщику — аванс, а не закрытие конкретной поставки.</p>
   <h2 class="mb-2 text-base font-semibold">Счета</h2>
   <div class="mb-6 overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
@@ -37,7 +32,22 @@
       <ul class="mt-2 space-y-1 text-sm">{% for row in balances.advances %}<li class="tabular-nums">{{ row.amount|money }} {{ row.currency }}</li>{% empty %}<li class="text-slate-500">Нет авансов</li>{% endfor %}</ul>
     </section>
   </div>
-  <h2 class="mb-2 text-base font-semibold">Последние денежные документы</h2>
+  <form method="get" class="mb-3 flex flex-wrap items-end gap-2">
+    <label class="text-sm">Операция
+      <select name="effect" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for value, label in effects %}<option value="{{ value }}" {% if effect == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Счёт
+      <select name="account" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in accounts %}<option value="{{ row.pk }}" {% if account == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn-ghost">Показать</button>
+  </form>
+  <h2 class="mb-2 text-base font-semibold">Денежные документы</h2>
   <ul class="space-y-1 text-sm">
     {% for money in recent %}
       <li><a class="underline" href="{% url 'money_detail' money.pk %}">{{ money.operation.name }} {{ money.document.number }}</a> — {{ money.amount|money }} {{ money.account.currency }}</li>

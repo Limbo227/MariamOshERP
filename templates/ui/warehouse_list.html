@@ -7,7 +7,7 @@
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left text-slate-500"><tr>
-        <th class="px-3 py-2 font-medium">Код</th><th class="px-3 py-2 font-medium">Название</th><th class="px-3 py-2 font-medium">Тип</th><th class="px-3 py-2 font-medium">Состояние</th>
+        <th class="px-3 py-2 font-medium">Код</th><th class="px-3 py-2 font-medium">Название</th><th class="px-3 py-2 font-medium">Тип</th><th class="px-3 py-2 font-medium">Категория</th><th class="px-3 py-2 font-medium">Состояние</th><th class="px-3 py-2 text-right font-medium">Действия</th>
       </tr></thead>
       <tbody>
         {% for warehouse in page %}
@@ -15,9 +15,11 @@
             <td class="px-3 py-2">{{ warehouse.code }}</td>
             <td class="px-3 py-2"><a class="underline" href="{% url 'warehouse_detail' warehouse.pk %}">{{ warehouse.name }}</a></td>
             <td class="px-3 py-2">{{ warehouse.get_kind_display }}</td>
+            <td class="px-3 py-2">{% if warehouse.category %}{{ warehouse.category.name }}{% else %}Все{% endif %}</td>
             <td class="px-3 py-2">{% if warehouse.active %}Активен{% else %}Отключён{% endif %}</td>
+            <td class="px-3 py-2">{% url 'warehouse_edit' warehouse.pk as edit_url %}{% url 'warehouse_delete' warehouse.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить склад? Если на нём есть движения, он будет отключён." %}</td>
           </tr>
-        {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Складов нет.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="6" class="px-3 py-8 text-center text-slate-500">Складов нет.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

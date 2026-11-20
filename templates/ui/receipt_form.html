@@ -4,7 +4,8 @@
 {% block breadcrumb %}Приёмка / Новая{% endblock %}
 {% block heading %}Новая приёмка{% endblock %}
 {% block content %}
-  <p class="mb-4 max-w-3xl text-sm text-slate-600">Проведение приёмки увеличивает остаток и записывает долг поставщику в валюте закупки. Количество не ограничено заказанным: принято может быть меньше или больше плана.</p>
+  {% include "ui/_buying_tabs.html" %}
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">Проведение приёмки увеличивает остаток и записывает долг поставщику по цене строки заказа. Цену в приёмке изменить нельзя. Количество не ограничено заказанным. Для пшеницы по поставке отдельная приёмка не нужна.</p>
   <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
     <label class="text-sm">Поставщик
       <select name="supplier" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">

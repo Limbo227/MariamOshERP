@@ -4,6 +4,7 @@
 {% block breadcrumb %}Финансы / Обмен валюты{% endblock %}
 {% block heading %}Обмен валюты{% endblock %}
 {% block content %}
+  {% include "ui/_finance_tabs.html" %}
   <p class="mb-4 max-w-2xl text-sm text-slate-600">Курс считается как сумма списания, делённая на сумму зачисления. Обмен не является доходом, расходом или оплатой поставщику.</p>
   <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     {% csrf_token %}

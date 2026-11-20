@@ -1,0 +1,11 @@
+{% load ui_format %}
+<nav class="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Финансы">
+  <a class="{% tab_class request 'finance_home' 'money_detail' %}" href="{% url 'finance_home' %}">Журнал</a>
+  <a class="{% tab_class request 'bank_list' 'cash_list' %}" href="{% url 'bank_list' %}">Счета и кассы</a>
+  <a class="{% tab_class request 'payment_create' %}" href="{% url 'payment_create' %}">Оплата поставщику</a>
+  <a class="{% tab_class request 'customer_receipt_create' %}" href="{% url 'customer_receipt_create' %}">От покупателя</a>
+  <a class="{% tab_class request 'expense_create' %}" href="{% url 'expense_create' %}">Общий расход</a>
+  <a class="{% tab_class request 'shipment_expense_create' %}" href="{% url 'shipment_expense_create' %}">Расход поставки</a>
+  <a class="{% tab_class request 'transfer_create' %}" href="{% url 'transfer_create' %}">Перевод</a>
+  <a class="{% tab_class request 'convert_create' %}" href="{% url 'convert_create' %}">Конвертация</a>
+</nav>

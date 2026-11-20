@@ -11,7 +11,7 @@ from apps.core.services import record_opening
 from apps.finance.models import CashOperation, MoneyAccount, MoneyDocument, OpenItem
 from apps.finance.queries import item_remaining, money_balance, party_amount
 from apps.finance.services import record_money
-from apps.inventory.models import Product, StockMove, StorageLocation, Warehouse
+from apps.inventory.models import Product, ProductCategory, StockMove, StorageLocation, Warehouse
 from apps.inventory.queries import stock_qty
 from apps.inventory.services import record_receipt
 from apps.procurement.models import RailwayStation, Shipment
@@ -263,7 +263,9 @@ def _mill():
     Organization.objects.create(legal_name="Мариам-Ош")
     raw = Warehouse.objects.create(code="raw", name="Склад сырья", kind=Warehouse.Kind.RAW)
     wheat_bin = StorageLocation.objects.create(warehouse=raw, name="Пшеница")
-    wheat = Product.objects.create(sku="WHEAT", name="Пшеница", kind=Product.Kind.WHEAT, unit=Product.Unit.KG)
+    wheat = Product.objects.create(
+        sku="WHEAT", name="Пшеница", category=ProductCategory.objects.get(code="WHEAT"), unit=Product.Unit.KG
+    )
     supplier = Party.objects.create(name='ООО "АНТЕРА"', is_supplier=True)
     kgs = MoneyAccount.objects.create(name="MBank KGS", kind=MoneyAccount.Kind.BANK, currency="KGS")
     rub = MoneyAccount.objects.create(name="MBank RUB", kind=MoneyAccount.Kind.BANK, currency="RUB")

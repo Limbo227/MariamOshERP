@@ -1,2 +1,38 @@
 @import "tailwindcss";
 @source "../../templates";
+
+@theme {
+  --color-navy: #0c2340;
+  --color-navy-800: #14345a;
+  --color-ink: #132033;
+  --color-line: #e6ebf2;
+  --color-canvas: #eef2f6;
+  --color-teal-brand: #0f8f86;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex min-h-10 items-center justify-center rounded-md bg-teal-brand px-4 text-sm font-medium text-white no-underline hover:bg-teal-700;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-800 no-underline hover:bg-slate-50;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-white shadow-sm;
+  }
+  .chip {
+    @apply inline-flex rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+  .data-table {
+    @apply min-w-full border-collapse text-sm;
+  }
+  .data-table th {
+    @apply whitespace-nowrap px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .data-table td {
+    @apply px-3 py-2 align-top;
+  }
+  .data-table tbody tr {
+    @apply border-t border-slate-100;
+  }
+}

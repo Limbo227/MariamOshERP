@@ -21,7 +21,7 @@ class CompanyForm(StyledModelForm):
 class ProductForm(StyledModelForm):
     class Meta:
         model = Product
-        fields = ["sku", "name", "category", "kind", "unit", "unit_weight_kg", "package_kg", "sack", "active"]
+        fields = ["sku", "name", "category", "unit", "unit_weight_kg", "package_kg", "sack", "active"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,37 +29,41 @@ class ProductForm(StyledModelForm):
         if not self.instance.pk:
             categories = categories.filter(active=True)
         self.fields["category"].queryset = categories.order_by("name")
-        self.fields["category"].required = False
-        sacks = Product.objects.filter(kind=Product.Kind.SACK)
+        self.fields["category"].required = True
+        sacks = Product.objects.all()
+        if self.instance.pk:
+            sacks = sacks.exclude(pk=self.instance.pk)
         if not self.instance.pk:
             sacks = sacks.filter(active=True)
         self.fields["sack"].queryset = sacks.order_by("name")
         self.fields["sack"].required = False
         self.fields["package_kg"].required = False
         self.fields["unit_weight_kg"].required = False
-        self.fields["package_kg"].label = "Масса мешка для учёта в килограммах, кг"
-        self.fields["sack"].label = "Пустой мешок"
+        self.fields["package_kg"].label = "Масса мешка, кг"
+        self.fields["package_kg"].help_text = "Только если товар учитывается в килограммах и мешки считаются отдельно."
+        self.fields["sack"].label = "Упаковка"
+        self.fields["unit"].choices = [
+            (Product.Unit.PCS, "шт"),
+            (Product.Unit.KG, "кг"),
+            (Product.Unit.L, "л"),
+            (Product.Unit.BAG, "мш"),
+        ]
+        self.fields["unit"].help_text = "Количество на складе хранится в этой единице. Килограммы мешка показываются отдельно."
         locked = self.instance.pk and self.instance.stock_moves.exists()
         if locked:
-            for name in ("category", "kind", "unit", "unit_weight_kg", "package_kg", "sack"):
+            for name in ("category", "unit", "unit_weight_kg", "package_kg", "sack"):
                 self.fields[name].disabled = True
-            self.fields["kind"].help_text = "Категория, единица, масса единицы, фасовка и мешок не меняются после движений."
+            self.fields["category"].help_text = "Категория, единица, масса единицы, фасовка и упаковка не меняются после движений."
 
     def clean(self):
         cleaned = super().clean()
-        kind = cleaned.get("kind") or getattr(self.instance, "kind", "")
         unit = cleaned.get("unit") or getattr(self.instance, "unit", "")
-        if cleaned.get("category") is not None:
-            kind = cleaned["category"].role
-        if kind != Product.Kind.FLOUR:
-            cleaned["package_kg"] = None
-            cleaned["sack"] = None
-        elif unit == Product.Unit.BAG:
+        if unit == Product.Unit.BAG:
             cleaned["package_kg"] = None
             if not cleaned.get("unit_weight_kg"):
                 self.add_error("unit_weight_kg", "Для товара в мешках укажите массу одного мешка, кг.")
-        elif not cleaned.get("package_kg"):
-            self.add_error("package_kg", "Для муки в килограммах укажите массу одного мешка.")
+        elif unit != Product.Unit.KG:
+            cleaned["package_kg"] = None
         return cleaned
 
 
@@ -72,13 +76,22 @@ class PartyForm(StyledModelForm):
 class WarehouseForm(StyledModelForm):
     class Meta:
         model = Warehouse
-        fields = ["code", "name", "kind", "active"]
+        fields = ["code", "name", "kind", "category", "active"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["code"].help_text = "Короткий латинский код, например raw или flour."
+        self.fields["category"].required = False
+        self.fields["category"].queryset = ProductCategory.objects.filter(active=True).order_by("name")
+        self.fields["category"].empty_label = "Все категории"
+        self.fields["category"].help_text = "Пусто — склад принимает товар любой категории."
+        if self.instance.pk and self.instance.category_id and not self.instance.category.active:
+            self.fields["category"].queryset = ProductCategory.objects.filter(
+                Q(active=True) | Q(pk=self.instance.category_id)
+            ).order_by("name")
         if self.instance.pk and self.instance.locations.filter(stock_moves__isnull=False).exists():
             self.fields["kind"].disabled = True
+            self.fields["category"].disabled = True
 
 
 class LocationForm(StyledModelForm):
@@ -153,14 +166,14 @@ def company(request):
 
 @erp_page
 def product_list(request):
-    qs = Product.objects.all()
+    qs = Product.objects.select_related("category")
     q = request.GET.get("q", "").strip()
-    kind = request.GET.get("kind", "")
+    category = request.GET.get("category", "")
     active = request.GET.get("active", "")
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(sku__icontains=q))
-    if kind:
-        qs = qs.filter(kind=kind)
+    if category.isdigit():
+        qs = qs.filter(category_id=int(category))
     if active == "1":
         qs = qs.filter(active=True)
     elif active == "0":
@@ -169,7 +182,14 @@ def product_list(request):
     return render(
         request,
         "ui/product_list.html",
-        {"page": page, "query": query, "q": q, "kind": kind, "active": active, "kinds": Product.Kind.choices},
+        {
+            "page": page,
+            "query": query,
+            "q": q,
+            "category": category,
+            "active": active,
+            "categories": ProductCategory.objects.order_by("name"),
+        },
     )
 
 
@@ -275,7 +295,7 @@ def party_toggle(request, pk):
 
 @erp_page
 def warehouse_list(request):
-    page, query = pager(request, Warehouse.objects.all())
+    page, query = pager(request, Warehouse.objects.select_related("category"))
     return render(request, "ui/warehouse_list.html", {"page": page, "query": query})
 
 
@@ -448,3 +468,40 @@ def account_toggle(request, pk):
     else:
         messages.success(request, "Счёт включён." if account.active else "Счёт отключён.")
     return redirect("account_detail", account.pk)
+
+
+@erp_page
+@require_POST
+def product_remove(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    from apps.ui.http import remove_or_disable
+
+    return remove_or_disable(request, product, name=product.name, back="product_list")
+
+
+@erp_page
+@require_POST
+def party_remove(request, pk):
+    party = get_object_or_404(Party, pk=pk)
+    from apps.ui.http import remove_or_disable
+
+    return remove_or_disable(request, party, name=party.name, back="party_list")
+
+
+@erp_page
+@require_POST
+def warehouse_remove(request, pk):
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    from apps.ui.http import remove_or_disable
+
+    return remove_or_disable(request, warehouse, name=warehouse.name, back="warehouse_list")
+
+
+@erp_page
+@require_POST
+def account_remove(request, pk):
+    account = get_object_or_404(MoneyAccount, pk=pk)
+    from apps.ui.http import remove_or_disable
+
+    back = "cash_list" if account.kind == MoneyAccount.Kind.CASH else "bank_list"
+    return remove_or_disable(request, account, name=account.name, back=back)

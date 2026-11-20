@@ -1,34 +1,88 @@
 {% extends "ui/shell.html" %}
 {% load ui_format %}
 {% block title %}Поставка — Мариам-Ош ERP{% endblock %}
-{% block breadcrumb %}Поставки / {% if shipment.wagon_number %}{{ shipment.wagon_number }}{% else %}{{ shipment.pk }}{% endif %}{% endblock %}
-{% block heading %}{% if shipment.wagon_number %}Вагон {{ shipment.wagon_number }}{% else %}Поставка{% endif %}{% endblock %}
+{% block breadcrumb %}Поставки / {{ shipment.pk }}{% endblock %}
+{% block heading %}Поставка {{ shipment.pk }}{% endblock %}
 {% block content %}
-  <p class="mb-4 max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Черновик не меняет склад и долг. Проведение сразу принимает вес на склад и создаёт долг поставщику по цене спецификации.</p>
-  <dl class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
-    <div><dt class="text-xs text-slate-500">Закупка</dt><dd><a class="underline" href="{% url 'purchase_detail' shipment.order.pk %}">{{ shipment.order.document.number }}</a></dd></div>
+  {% include "ui/_buying_tabs.html" %}
+  <div class="mb-3 flex flex-wrap items-center gap-2">
+    <a class="text-sm text-teal-800 underline" href="{% url 'shipment_list' %}">Назад к списку</a>
+    {% url 'shipment_edit' shipment.pk as edit_url %}
+    {% if shipment.status == "DRAFT" %}{% url 'shipment_delete' shipment.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить черновик поставки?" %}{% else %}{% include "ui/_actions.html" with edit=edit_url %}{% endif %}
+  </div>
+  {% if shipment.status == "DRAFT" %}
+    <p class="mb-4 max-w-3xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Черновик не меняет склад и долг. Проведение сразу принимает вес на склад и создаёт долг поставщику по цене спецификации.</p>
+  {% else %}
+    <p class="mb-4 max-w-3xl rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm">Поставка проведена. Отдельная кнопка «Принять товар» не нужна: приёмка уже создана. Номера вагонов можно дописать, вес и долг при этом не меняются.</p>
+  {% endif %}
+  <dl class="card mb-6 grid gap-4 p-5 sm:grid-cols-3">
+    <div><dt class="text-xs text-slate-500">Спецификация</dt><dd><a class="underline" href="{% url 'purchase_detail' shipment.order.pk %}">{{ shipment.order.document.number }}{% if shipment.order.specification_number %} / {{ shipment.order.specification_number }}{% endif %}</a></dd></div>
     <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{{ shipment.order.supplier.name }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Договор</dt><dd>{% if shipment.order.contract %}{{ shipment.order.contract.number }} / {{ shipment.order.specification_number }}{% else %}Без договора{% endif %}</dd></div>
-    <div><dt class="text-xs text-slate-500">Отправлено</dt><dd class="tabular-nums">{{ shipment.quantity|qty }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Принято по закупке</dt><dd class="tabular-nums">{{ accepted|qty }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Статус</dt><dd>{{ shipment.get_status_display }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Отправление</dt><dd>{{ shipment.departure_date|date:"d.m.Y" }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Прибытие</dt><dd>{% if shipment.arrival_date %}{{ shipment.arrival_date|date:"d.m.Y" }}{% else %}—{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Договор</dt><dd>{% if shipment.order.contract %}{{ shipment.order.contract.number }}{% else %}Без договора{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Вес, кг</dt><dd class="tabular-nums">{{ shipment.quantity|qty }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Вагонов</dt><dd class="tabular-nums">{{ shipment.wagon_count }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Статус</dt><dd><span class="chip {% if shipment.status == 'POSTED' %}bg-emerald-100 text-emerald-900{% else %}bg-amber-100 text-amber-900{% endif %}">{{ shipment.get_status_display }}</span></dd></div>
+    <div><dt class="text-xs text-slate-500">Станция отправления</dt><dd>{{ shipment.departure_station|default:"—" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Отправление</dt><dd>{% if shipment.departure_date %}{{ shipment.departure_date|date:"d.m.Y" }}{% else %}—{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Дата приёмки</dt><dd>{% if shipment.arrival_date %}{{ shipment.arrival_date|date:"d.m.Y" }}{% else %}—{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Цена спецификации</dt><dd class="tabular-nums">{% if line %}{{ line.price|money }} {{ shipment.order.currency }} за {{ line.product.unit|unit }}{% else %}—{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Валюта</dt><dd>{{ shipment.order.currency }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Принято по спецификации</dt><dd class="tabular-nums">{{ accepted|qty }}</dd></div>
   </dl>
   {% if shipment.notes %}<p class="mb-4 text-sm text-slate-600">{{ shipment.notes }}</p>{% endif %}
   <h2 class="mb-2 text-base font-semibold">Проведение</h2>
-  <form method="post" action="{% url 'shipment_status' shipment.pk %}" class="mb-6 max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+  <form method="post" action="{% url 'shipment_status' shipment.pk %}" class="card mb-6 max-w-xl space-y-4 p-5">
     {% csrf_token %}
     {% include "ui/_form_fields.html" with form=status_form %}
     {% if shipment.status == "DRAFT" %}
-      <button name="action" value="post" class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white">Провести</button>
+      <button name="action" value="post" class="btn-primary" data-confirm="Провести поставку? Вес станет остатком, долг поставщику будет записан по цене спецификации.">Провести</button>
     {% else %}
-      <button name="action" value="unpost" class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Отменить выполнение</button>
+      <button name="action" value="unpost" class="btn-ghost" data-confirm="Отменить выполнение? Склад и долг этой поставки будут сняты, если остатка хватает.">Отменить выполнение</button>
     {% endif %}
   </form>
-  <h2 class="mb-2 text-base font-semibold">Приёмки этой закупки</h2>
-  <ul class="mb-6 space-y-1 text-sm">{% for receipt in receipts %}<li><a class="underline" href="{% url 'receipt_detail' receipt.pk %}">{{ receipt.document.number }}</a> — {{ receipt.warehouse.name }}</li>{% empty %}<li class="text-slate-500">Приёмок по закупке нет.</li>{% endfor %}</ul>
-  <h2 class="mb-2 text-base font-semibold">Расходы по вагону</h2>
-  <ul class="space-y-1 text-sm">{% for expense in expenses %}<li><a class="underline" href="{% url 'money_detail' expense.pk %}">{{ expense.operation.name }} {{ expense.document.number }}</a> — {{ expense.amount|money }} {{ expense.account.currency }}</li>{% empty %}<li class="text-slate-500">Расходов по вагону нет.</li>{% endfor %}</ul>
-  <p class="mt-4"><a class="underline" href="{% url 'receipt_create' %}?supplier={{ shipment.order.supplier_id }}&order={{ shipment.order.pk }}">Принять товар по этой закупке</a></p>
+  <h2 class="mb-2 text-base font-semibold">Вагоны</h2>
+  <p class="mb-2 max-w-3xl text-sm text-slate-600">Быстрый ввод хранит число вагонов и общий вес. Здесь можно указать номер и вес каждого. Сверка включается, только когда число строк и сумма веса совпадают с заголовком.</p>
+  <form method="post" action="{% url 'shipment_wagons' shipment.pk %}" class="card mb-6 overflow-x-auto p-4">
+    {% csrf_token %}
+    <table class="data-table" id="wagon-table">
+      <thead><tr><th>Номер вагона</th><th class="text-right">Вес, кг</th></tr></thead>
+      <tbody>
+        {% for wagon in wagons %}
+          <tr>
+            <td><input name="wagon_number" value="{{ wagon.wagon_number }}" class="w-full rounded-md border border-slate-300 px-3 py-2"></td>
+            <td><input name="weight_kg" value="{{ wagon.weight_kg }}" class="w-full rounded-md border border-slate-300 px-3 py-2 text-right"></td>
+          </tr>
+        {% endfor %}
+        {% for _ in blank_rows %}
+          <tr>
+            <td><input name="wagon_number" class="w-full rounded-md border border-slate-300 px-3 py-2"></td>
+            <td><input name="weight_kg" class="w-full rounded-md border border-slate-300 px-3 py-2 text-right"></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+      <button type="button" class="btn-ghost" id="add-wagon">Добавить строку</button>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="complete" value="1" class="h-4 w-4"> Сверить с заголовком</label>
+      <button class="btn-primary">Сохранить вагоны</button>
+    </div>
+  </form>
+  <template id="wagon-template">
+    <tr>
+      <td><input name="wagon_number" class="w-full rounded-md border border-slate-300 px-3 py-2"></td>
+      <td><input name="weight_kg" class="w-full rounded-md border border-slate-300 px-3 py-2 text-right"></td>
+    </tr>
+  </template>
+  <script>
+    document.getElementById("add-wagon").addEventListener("click", function () {
+      var row = document.getElementById("wagon-template").content.cloneNode(true);
+      document.querySelector("#wagon-table tbody").appendChild(row);
+    });
+  </script>
+  {% if shipment.receipt_id %}
+    <p class="mb-4 text-sm">Внутренняя приёмка: <a class="underline" href="{% url 'receipt_detail' shipment.receipt_id %}">{{ shipment.receipt.document.number }}</a>. Её нельзя провести или отменить отдельно от поставки.</p>
+  {% endif %}
+  <h2 class="mb-2 text-base font-semibold">Расходы по этой поставке</h2>
+  <p class="mb-2"><a class="btn-ghost" href="{% url 'shipment_expense_create' %}">Расход поставки</a></p>
+  <ul class="space-y-1 text-sm">{% for expense in expenses %}<li><a class="underline" href="{% url 'money_detail' expense.pk %}">{{ expense.operation.name }} {{ expense.document.number }}</a> — {{ expense.amount|money }} {{ expense.account.currency }}</li>{% empty %}<li class="text-slate-500">Расходов по поставке нет.</li>{% endfor %}</ul>
 {% endblock %}

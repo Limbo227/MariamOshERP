@@ -10,7 +10,7 @@ from apps.core.services import record_opening, reverse_document
 from apps.finance.models import OpenItem
 from apps.finance.queries import item_remaining, supplier_balances
 from apps.finance.services import settle_supplier
-from apps.inventory.models import Product, StorageLocation, Warehouse
+from apps.inventory.models import Product, ProductCategory, StorageLocation, Warehouse
 from apps.procurement.models import RailwayStation
 from apps.procurement.services import record_contract, record_purchase, record_shipment
 from apps.ui.access import ensure_boss_group
@@ -81,8 +81,12 @@ def test_boss_login_logout_and_live_dashboard(client, boss):
     raw = Warehouse.objects.create(code="raw", name="Склад сырья", kind=Warehouse.Kind.RAW)
     wheat_bin = StorageLocation.objects.create(warehouse=raw, name="Пшеница")
     sack_bin = StorageLocation.objects.create(warehouse=raw, name="Мешки")
-    wheat = Product.objects.create(sku="WHEAT", name="Пшеница", kind=Product.Kind.WHEAT, unit=Product.Unit.KG)
-    sack = Product.objects.create(sku="SACK", name="Пустой мешок", kind=Product.Kind.SACK, unit=Product.Unit.PCS)
+    wheat = Product.objects.create(
+        sku="WHEAT", name="Пшеница", category=ProductCategory.objects.get(code="WHEAT"), unit=Product.Unit.KG
+    )
+    sack = Product.objects.create(
+        sku="SACK", name="Пустой мешок", category=ProductCategory.objects.get(code="SACK"), unit=Product.Unit.PCS
+    )
     supplier = Party.objects.create(name="Антера", is_supplier=True)
     record_opening(
         effective_date=DAY,

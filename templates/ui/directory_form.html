@@ -1,0 +1,15 @@
+{% extends "ui/shell.html" %}
+{% block title %}{{ heading }} — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники{% endblock %}
+{% block heading %}{{ heading }}{% endblock %}
+{% block content %}
+  {% if note %}<p class="mb-4 max-w-2xl text-sm text-slate-600">{{ note }}</p>{% endif %}
+  <form method="post" class="card max-w-xl space-y-4 p-5">
+    {% csrf_token %}
+    {% include "ui/_form_fields.html" %}
+    <div class="flex flex-wrap gap-2">
+      <button class="btn-primary">Сохранить</button>
+      <a class="btn-ghost" href="{% url cancel %}">Отмена</a>
+    </div>
+  </form>
+{% endblock %}

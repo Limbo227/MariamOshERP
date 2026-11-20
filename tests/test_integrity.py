@@ -20,7 +20,7 @@ from apps.finance.models import (
 from apps.finance.queries import money_balance, party_amount
 from apps.finance.services import record_money, record_shipment_expense, settle_supplier
 from apps.inventory.models import ProductCategory, StockMove, Warehouse
-from apps.inventory.products import save_category, save_product
+from apps.inventory.products import save_product
 from apps.inventory.queries import on_hand_weight_kg, stock_qty
 from apps.inventory.services import (
     ensure_default_location,
@@ -58,6 +58,8 @@ def mill():
     Organization.objects.create(legal_name="Мариам-Ош")
     raw = Warehouse.objects.create(code="raw", name="Склад сырья", kind=Warehouse.Kind.RAW)
     finished = Warehouse.objects.create(code="fg", name="Склад готовой продукции", kind=Warehouse.Kind.FINISHED)
+    finished.category = ProductCategory.objects.get(code="FLOUR")
+    finished.save(update_fields=["category"])
     supplier = Party.objects.create(name="Поставщик зерна", is_supplier=True)
     customer = Party.objects.create(name="Покупатель", is_customer=True)
     manas = save_station(name="Манас", country="Кыргызстан")
@@ -323,17 +325,15 @@ def test_wagon_rules_and_metadata_after_posting(mill):
 
 
 def test_bag_flour_production_uses_the_warehouse_and_consumes_sacks_once(mill):
-    category = save_category(name="Мука высшего сорта", role=ProductCategory.Role.FLOUR)
     sack = save_product(sku="SACK", name="Мешок", category=ProductCategory.objects.get(code="SACK"), unit="PCS")
     flour = save_product(
         sku="HV",
         name="Мука высшего сорта",
-        category=category,
+        category=ProductCategory.objects.get(code="FLOUR"),
         unit="BAG",
         unit_weight_kg="50",
         sack=sack,
     )
-    assert flour.kind == ProductCategory.Role.FLOUR
     assert flour.unit == "BAG"
     raw_bin = ensure_default_location(mill["raw"])
     record_opening(
@@ -366,8 +366,6 @@ def test_bag_flour_production_uses_the_warehouse_and_consumes_sacks_once(mill):
         lines=[{"product": flour, "quantity": "100", "price": "1150"}],
     )
     assert sale.document.open_items.get().amount == Decimal("115000.00")
-    with pytest.raises(ValidationError):
-        save_category(name=category.name, role=ProductCategory.Role.OTHER, category=category)
 
 
 def test_receipt_unpost_is_blocked_when_production_used_the_stock(mill):

@@ -1,53 +1,48 @@
-from decimal import Decimal
+from datetime import date
 
-from django.db.models import Sum
 from django.shortcuts import render
 from django.urls import reverse
 
 from apps.finance.models import MoneyDocument
-from apps.inventory.models import GoodsReceipt, Product, StockMove, Warehouse
+from apps.inventory.models import GoodsReceipt, Product, ProductCategory, StockMove, Warehouse
+from apps.inventory.queries import stock_by_warehouse
 from apps.ui.http import erp_page, pager
+
+
+def _as_of(value):
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 @erp_page
 def stock_list(request):
-    qs = StockMove.objects.values(
-        "location__warehouse__name",
-        "location__name",
-        "product__name",
-        "product__sku",
-        "product__unit",
-    ).annotate(quantity=Sum("qty_delta"))
-    warehouse = request.GET.get("warehouse", "")
-    product = request.GET.get("product", "")
-    if warehouse:
-        qs = qs.filter(location__warehouse_id=warehouse)
-    if product:
-        qs = qs.filter(product_id=product)
-    qs = qs.exclude(quantity=0).order_by("location__warehouse__name", "location__name", "product__name")
-    page, query = pager(request, qs)
-    rows = [
-        {
-            "warehouse": row["location__warehouse__name"],
-            "location": row["location__name"],
-            "product": row["product__name"],
-            "sku": row["product__sku"],
-            "quantity": row["quantity"] or Decimal("0"),
-            "unit": row["product__unit"],
-        }
-        for row in page.object_list
-    ]
+    warehouse_id = request.GET.get("warehouse", "")
+    product_id = request.GET.get("product", "")
+    category_id = request.GET.get("category", "")
+    as_of = _as_of(request.GET.get("as_of", ""))
+    warehouse = Warehouse.objects.filter(pk=warehouse_id).first() if warehouse_id else None
+    product = Product.objects.filter(pk=product_id).first() if product_id else None
+    category = ProductCategory.objects.filter(pk=category_id).first() if category_id else None
+    balances = stock_by_warehouse(warehouse=warehouse, product=product, category=category, as_of=as_of)
+    page, query = pager(request, balances)
     return render(
         request,
         "ui/stock_list.html",
         {
-            "rows": rows,
+            "rows": page.object_list,
             "page": page,
             "query": query,
             "warehouses": Warehouse.objects.all(),
             "products": Product.objects.all(),
-            "warehouse": warehouse,
-            "product": product,
+            "categories": ProductCategory.objects.order_by("name"),
+            "warehouse": warehouse_id,
+            "product": product_id,
+            "category": category_id,
+            "as_of": request.GET.get("as_of", ""),
         },
     )
 

@@ -1,7 +1,7 @@
 {% extends "ui/shell.html" %}
-{% block title %}Новая закупка — Мариам-Ош ERP{% endblock %}
-{% block breadcrumb %}Закупки / Новая{% endblock %}
-{% block heading %}{% if contract %}Спецификация к договору {{ contract.number }}{% else %}Новая закупка{% endif %}{% endblock %}
+{% block title %}{% if editing %}Изменить закупку{% else %}Новая закупка{% endif %} — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}{% if editing %}Закупки / Изменить{% else %}Закупки / Новая{% endif %}{% endblock %}
+{% block heading %}{% if editing %}Изменить {{ editing.document.number }}{% elif contract %}Спецификация к договору {{ contract.number }}{% else %}Новая закупка{% endif %}{% endblock %}
 {% block content %}
   <p class="mb-4 max-w-2xl text-sm text-slate-600">Обычная закупка проводится без договора. Закупка пшеницы проводится по действующему договору и номеру спецификации. Проведение создаёт только план. Склад и долг поставщику появятся при приёмке.</p>
   <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
@@ -10,7 +10,8 @@
     {% if preview %}<p class="rounded-md bg-slate-50 px-3 py-2 text-sm">{{ preview }}</p>{% endif %}
     <div class="flex flex-wrap gap-2">
       <button name="action" value="preview" class="min-h-11 rounded-md border border-slate-300 px-4 text-sm" formnovalidate>Показать сумму</button>
-      <button name="action" value="post" class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white" data-confirm="Провести закупку? Склад и долг пока не изменятся.">Провести закупку</button>
+      <button name="action" value="post" class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white" data-confirm="{% if editing %}Сохранить изменения?{% else %}Провести закупку? Склад и долг пока не изменятся.{% endif %}">{% if editing %}Сохранить{% else %}Провести закупку{% endif %}</button>
+      {% if editing %}<a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'purchase_detail' editing.pk %}">Отмена</a>{% endif %}
     </div>
   </form>
 {% endblock %}

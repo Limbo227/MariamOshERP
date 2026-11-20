@@ -3,7 +3,8 @@
 {% block breadcrumb %}Финансы / Расход{% endblock %}
 {% block heading %}Расход{% endblock %}
 {% block content %}
-  <p class="mb-4 max-w-2xl text-sm text-slate-600">Таможня, дорога, банк и прочие расходы списываются со счёта. Это не оплата поставщику. Закупку и вагон можно указать, подотчётного сотрудника здесь нет.</p>
+  {% include "ui/_finance_tabs.html" %}
+  <p class="mb-4 max-w-2xl text-sm text-slate-600">Общий расход проводится по утверждённому виду операции. Статья из справочника здесь не выбирается: она относится к <a class="underline" href="{% url 'shipment_expense_create' %}">расходу поставки</a> и не создаёт новый вид проводки. Закупку и поставку можно указать справочно. Подотчётного сотрудника здесь нет.</p>
   <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     {% csrf_token %}
     {% include "ui/_form_fields.html" %}

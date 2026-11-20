@@ -1,0 +1,23 @@
+{% extends "ui/shell.html" %}
+{% block title %}Условия поставки — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Условия поставки{% endblock %}
+{% block heading %}Условия поставки{% endblock %}
+{% block content %}
+  <p class="mb-4"><a class="btn-primary" href="{% url 'term_create' %}">Новое условие</a></p>
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead class="bg-slate-50"><tr><th>Название</th><th>Код</th><th>Состояние</th><th class="text-right">Действия</th></tr></thead>
+      <tbody>
+        {% for row in page %}
+          <tr>
+            <td><a class="underline" href="{% url 'term_edit' row.pk %}">{{ row.name }}</a></td>
+            <td>{{ row.code }}</td>
+            <td>{% if row.active %}Действует{% else %}Отключено{% endif %}</td>
+            <td>{% url 'term_edit' row.pk as edit_url %}{% url 'term_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить условие поставки? Если оно используется, запись будет отключена." %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Условий нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "ui/_pagination.html" %}
+{% endblock %}

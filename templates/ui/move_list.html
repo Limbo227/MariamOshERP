@@ -24,7 +24,7 @@
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left text-slate-500"><tr>
-        <th class="px-3 py-2">Дата</th><th class="px-3 py-2">Документ</th><th class="px-3 py-2">Товар</th><th class="px-3 py-2">Место</th><th class="px-3 py-2 text-right">Изменение</th>
+        <th class="px-3 py-2">Дата</th><th class="px-3 py-2">Документ</th><th class="px-3 py-2">Товар</th><th class="px-3 py-2">Склад</th><th class="px-3 py-2 text-right">Изменение</th>
       </tr></thead>
       <tbody>
         {% for move in page %}
@@ -32,8 +32,8 @@
             <td class="px-3 py-2">{{ move.effective_date|date:"d.m.Y" }}</td>
             <td class="px-3 py-2">{% if move.ui_url %}<a class="underline" href="{{ move.ui_url }}">{{ move.document.number }}</a>{% else %}{{ move.document.number }}{% endif %}</td>
             <td class="px-3 py-2">{{ move.product.name }}</td>
-            <td class="px-3 py-2">{{ move.location.warehouse.name }} / {{ move.location.name }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ move.qty_delta|qty }} {{ move.product.get_unit_display }}</td>
+            <td class="px-3 py-2">{{ move.location.warehouse.name }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ move.qty_delta|qty }} {{ move.product.unit|unit }}</td>
           </tr>
         {% empty %}<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">Движений нет.</td></tr>{% endfor %}
       </tbody>

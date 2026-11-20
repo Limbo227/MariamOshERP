@@ -4,11 +4,11 @@
 {% block heading %}{{ warehouse.name }}{% endblock %}
 {% block content %}
   <div class="mb-4 flex flex-wrap gap-2">
-    <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'warehouse_edit' warehouse.pk %}">Изменить</a>
+    {% url 'warehouse_edit' warehouse.pk as edit_url %}{% url 'warehouse_delete' warehouse.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить склад? Если на нём есть движения, он будет отключён." %}
     <form method="post" action="{% url 'warehouse_toggle' warehouse.pk %}">{% csrf_token %}<button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">{% if warehouse.active %}Отключить{% else %}Включить{% endif %}</button></form>
     <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'location_create' %}?warehouse={{ warehouse.pk }}">Добавить место</a>
   </div>
-  <p class="mb-4 text-sm text-slate-600">{{ warehouse.get_kind_display }}. Код {{ warehouse.code }}.</p>
+  <p class="mb-4 text-sm text-slate-600">{{ warehouse.get_kind_display }}. Код {{ warehouse.code }}. Категория: {% if warehouse.category %}{{ warehouse.category.name }}{% else %}все{% endif %}.</p>
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left text-slate-500"><tr><th class="px-3 py-2 font-medium">Место хранения</th><th class="px-3 py-2 font-medium">Состояние</th></tr></thead>

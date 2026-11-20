@@ -1,0 +1,22 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Единицы — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Единицы{% endblock %}
+{% block heading %}Единицы измерения{% endblock %}
+{% block content %}
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">Четыре фиксированные единицы. Новый справочник единиц не создаётся. Остаток хранится в единице товара: 100 мш остаются 100 мш, даже если у мешка указана масса.</p>
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead class="bg-slate-50"><tr><th>Код</th><th>На экране</th><th>В справочнике</th></tr></thead>
+      <tbody>
+        {% for unit in units %}
+          <tr>
+            <td>{{ unit.code }}</td>
+            <td>{{ unit.code|unit }}</td>
+            <td>{{ unit.name }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="3" class="px-3 py-8 text-center text-slate-500">Единицы не загружены.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

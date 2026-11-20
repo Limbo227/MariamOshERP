@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 
 from apps.core.models import Organization, Party
 from apps.finance.models import OpenItem
-from apps.inventory.models import Product, StockMove
+from apps.inventory.models import Product, ProductCategory, StockMove
 from apps.procurement.models import PurchaseOrder, RailwayStation, Shipment
 from apps.procurement.services import (
     record_contract,
@@ -21,8 +21,12 @@ DAY = date(2026, 11, 2)
 @pytest.fixture
 def grain():
     Organization.objects.create(legal_name="Мариам-Ош")
-    wheat = Product.objects.create(sku="WHEAT", name="Пшеница", kind=Product.Kind.WHEAT, unit=Product.Unit.KG)
-    sack = Product.objects.create(sku="SACK", name="Мешок", kind=Product.Kind.SACK, unit=Product.Unit.PCS)
+    wheat = Product.objects.create(
+        sku="WHEAT", name="Пшеница", category=ProductCategory.objects.get(code="WHEAT"), unit=Product.Unit.KG
+    )
+    sack = Product.objects.create(
+        sku="SACK", name="Мешок", category=ProductCategory.objects.get(code="SACK"), unit=Product.Unit.PCS
+    )
     supplier = Party.objects.create(name="Поставщик зерна", is_supplier=True)
     other = Party.objects.create(name="Другой поставщик", is_supplier=True)
     station = RailwayStation.objects.create(name="Манас")

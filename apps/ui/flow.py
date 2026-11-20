@@ -17,8 +17,15 @@ from apps.finance.queries import item_remaining
 from apps.inventory.models import GoodsReceipt, Product, ReceiptLine, StorageLocation, Warehouse
 from apps.inventory.services import record_receipt
 from apps.procurement.models import PurchaseOrder, RailwayStation, Shipment
-from apps.procurement.services import post_shipment, record_shipment, unpost_shipment
-from apps.ui.fields import StyledForm, date_field, qty_field
+from apps.procurement.services import (
+    declare_wagons,
+    delete_shipment,
+    post_shipment,
+    record_shipment,
+    unpost_shipment,
+    update_shipment,
+)
+from apps.ui.fields import LooseDecimalField, StyledForm, date_field, qty_field
 from apps.ui.formatting import format_money, format_qty
 from apps.ui.http import erp_page, error_text, pager
 
@@ -80,7 +87,8 @@ class ReceiptForm(StyledForm):
         self.fields["location"].queryset = StorageLocation.objects.filter(active=True, warehouse__active=True).select_related(
             "warehouse"
         )
-        self.fields["bags"].help_text = "Только для муки."
+        self.fields["location"].widget = forms.HiddenInput()
+        self.fields["bags"].help_text = "Для товара в килограммах с указанной массой мешка."
 
     def clean(self):
         cleaned = super().clean()
@@ -91,14 +99,10 @@ class ReceiptForm(StyledForm):
             self.add_error("purchase_line", "Строка не относится к выбранной закупке.")
         if location and warehouse and location.warehouse_id != warehouse.id:
             self.add_error("location", "Место хранения не относится к выбранному складу.")
-        if (
-            line
-            and line.product.kind == Product.Kind.FLOUR
-            and line.product.unit == Product.Unit.KG
-            and not cleaned.get("bags")
-        ):
-            self.add_error("bags", "Для муки в килограммах укажите число мешков.")
-        if line and line.product.kind != Product.Kind.FLOUR:
+        counts_bags = line and line.product.unit == Product.Unit.KG and line.product.package_kg
+        if counts_bags and not cleaned.get("bags"):
+            self.add_error("bags", "Для товара с массой мешка укажите число мешков.")
+        if line and not counts_bags and line.product.unit != Product.Unit.BAG:
             cleaned["bags"] = None
         return cleaned
 
@@ -113,11 +117,14 @@ def _order_label(order):
 def _shipment_qs():
     return Shipment.objects.select_related(
         "order__document", "order__supplier", "order__contract", "departure_station"
-    ).prefetch_related("wagons").order_by("-departure_date", "-pk")
+    ).prefetch_related("wagons", "order__lines__product").order_by("-departure_date", "-pk")
 
 
 @erp_page
 def shipment_list(request):
+    from apps.ui.http import remember_list
+
+    remember_list(request, "shipments")
     qs = _shipment_qs()
     q = request.GET.get("q", "").strip()
     supplier = request.GET.get("supplier", "")
@@ -145,6 +152,11 @@ def shipment_list(request):
         qs = qs.filter(departure_date__lte=date_to)
     qs = qs.distinct()
     page, query = pager(request, qs)
+    rows = list(page.object_list)
+    for shipment in rows:
+        lines = list(shipment.order.lines.all())
+        shipment.ui_line = lines[0] if lines else None
+    page.object_list = rows
     from apps.procurement.models import PurchaseContract
 
     return render(
@@ -198,6 +210,57 @@ def shipment_create(request):
 
 
 @erp_page
+def shipment_edit(request, pk):
+    shipment = get_object_or_404(_shipment_qs(), pk=pk)
+    initial = {
+        "order": shipment.order_id,
+        "departure_station": shipment.departure_station_id,
+        "quantity": shipment.quantity,
+        "wagon_count": shipment.wagon_count,
+        "departure_date": shipment.departure_date,
+        "wagon_number": shipment.wagon_number,
+        "arrival_date": shipment.arrival_date,
+        "notes": shipment.notes,
+    }
+    form = ShipmentForm(request.POST or None, initial=None if request.method == "POST" else initial)
+    form.fields["wagon_number"].disabled = True
+    form.fields["wagon_number"].help_text = "Номера вагонов меняются в карточке поставки."
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            update_shipment(
+                shipment,
+                order=data["order"],
+                quantity=data["quantity"],
+                wagon_count=data["wagon_count"],
+                departure_date=data.get("departure_date"),
+                arrival_date=data.get("arrival_date"),
+                notes=data.get("notes") or "",
+                departure_station=data["departure_station"],
+                actor=request.user,
+            )
+        except ValidationError as exc:
+            form.add_error(None, error_text(exc))
+        else:
+            messages.success(request, "Поставка сохранена.")
+            return redirect("shipment_detail", shipment.pk)
+    return render(request, "ui/shipment_form.html", {"form": form, "order": shipment.order, "editing": shipment})
+
+
+@erp_page
+@require_POST
+def shipment_delete(request, pk):
+    shipment = get_object_or_404(Shipment, pk=pk)
+    try:
+        delete_shipment(shipment, actor=request.user)
+    except ValidationError as exc:
+        messages.error(request, error_text(exc))
+        return redirect("shipment_detail", shipment.pk)
+    messages.success(request, "Черновик поставки удалён.")
+    return redirect("shipment_list")
+
+
+@erp_page
 def shipment_detail(request, pk):
     shipment = get_object_or_404(_shipment_qs(), pk=pk)
     order = shipment.order
@@ -214,6 +277,8 @@ def shipment_detail(request, pk):
     )
     expenses = shipment.expenses.select_related("document", "account", "operation")
     status_form = ShipmentStatusForm(shipment=shipment)
+    lines = list(order.lines.all())
+    line = lines[0] if lines else None
     return render(
         request,
         "ui/shipment_detail.html",
@@ -223,8 +288,42 @@ def shipment_detail(request, pk):
             "receipts": receipts,
             "expenses": expenses,
             "status_form": status_form,
+            "line": line,
+            "wagons": list(shipment.wagons.all()),
+            "blank_rows": range(4),
         },
     )
+
+
+@erp_page
+@require_POST
+def shipment_wagons(request, pk):
+    shipment = get_object_or_404(Shipment, pk=pk)
+    numbers = request.POST.getlist("wagon_number")
+    weights = request.POST.getlist("weight_kg")
+    wagons = []
+    weight_field = LooseDecimalField(max_digits=18, decimal_places=3, min_value=Decimal("0.001"))
+    try:
+        for number, weight in zip(numbers, weights):
+            if not (number or "").strip() and not str(weight or "").strip():
+                continue
+            wagons.append({"wagon_number": number, "weight_kg": weight_field.clean(weight)})
+        if not wagons:
+            raise ValidationError("Укажите номер вагона и вес.")
+        declare_wagons(
+            shipment,
+            wagons,
+            complete=request.POST.get("complete") == "1",
+            actor=request.user,
+        )
+    except (ValidationError, forms.ValidationError) as exc:
+        messages.error(request, error_text(exc))
+    else:
+        if shipment.status == Shipment.Status.POSTED:
+            messages.success(request, "Вагоны сохранены. Проведённый вес и долг не изменились.")
+        else:
+            messages.success(request, "Вагоны сохранены.")
+    return redirect("shipment_detail", shipment.pk)
 
 
 @erp_page

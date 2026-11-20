@@ -5,6 +5,34 @@ from django.core.paginator import Paginator
 from django.shortcuts import render
 
 
+def remove_or_disable(request, obj, *, name, back):
+    """Delete a directory row. If documents still point at it, switch it off instead."""
+    from django.contrib import messages
+    from django.core.exceptions import ValidationError
+    from django.db.models.deletion import ProtectedError
+    from django.shortcuts import redirect
+
+    try:
+        obj.delete()
+    except ProtectedError:
+        if not hasattr(obj, "active"):
+            messages.error(request, f"«{name}» используется. Удалить её нельзя.")
+            return redirect(back)
+        obj.active = False
+        try:
+            obj.save(update_fields=["active"])
+        except ValidationError as exc:
+            messages.error(request, error_text(exc))
+            return redirect(back)
+        messages.warning(
+            request,
+            f"«{name}» уже используется, поэтому запись отключена. История документов сохранена.",
+        )
+    else:
+        messages.success(request, f"«{name}» удалён.")
+    return redirect(back)
+
+
 def error_text(exc):
     if hasattr(exc, "message_dict"):
         parts = [message for messages in exc.message_dict.values() for message in messages]
@@ -26,6 +54,15 @@ def erp_page(view):
         return view(request, *args, **kwargs)
 
     return wrapped
+
+
+def remember_list(request, key):
+    if request.method == "GET":
+        request.session[f"back:{key}"] = request.get_full_path()
+
+
+def stored_back(request, key, fallback):
+    return request.session.get(f"back:{key}") or fallback
 
 
 def pager(request, queryset, per_page=25):

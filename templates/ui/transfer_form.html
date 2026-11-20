@@ -3,7 +3,8 @@
 {% block breadcrumb %}Финансы / Перевод{% endblock %}
 {% block heading %}Перевод между своими счетами{% endblock %}
 {% block content %}
-  <p class="mb-4 max-w-2xl text-sm text-slate-600">Только одна валюта: касса в банк, банк в кассу или между счетами одного типа. Это не доход, не расход и не оплата поставщику. Для разных валют нужен обмен.</p>
+  {% include "ui/_finance_tabs.html" %}
+  <p class="mb-4 max-w-2xl text-sm text-slate-600">Только одна валюта: касса в банк, банк в кассу или банк в банк. Перевод кассы в кассу не настроен. Это не доход, не расход и не оплата поставщику. Для разных валют нужна конвертация.</p>
   <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     {% csrf_token %}
     {% include "ui/_form_fields.html" %}

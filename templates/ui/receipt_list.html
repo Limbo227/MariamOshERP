@@ -4,6 +4,7 @@
 {% block breadcrumb %}Приёмка / История{% endblock %}
 {% block heading %}История приёмок{% endblock %}
 {% block content %}
+  {% include "ui/_buying_tabs.html" %}
   <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
     <form method="get" class="flex flex-wrap items-end gap-2">
       <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>

@@ -8,7 +8,7 @@ from apps.core.models import Organization, Party, User
 from apps.core.services import record_opening
 from apps.finance.models import CashOperation, MoneyAccount, OpenItem
 from apps.finance.queries import money_balance, party_amount
-from apps.inventory.models import Product, StockMove
+from apps.inventory.models import Product, ProductCategory, StockMove
 from apps.procurement.models import PurchaseContract, PurchaseOrder, RailwayStation, Shipment
 from apps.ui.access import ensure_boss_group
 
@@ -63,15 +63,17 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
     post_ok(boss_client, reverse("company"), {"legal_name": "Мариам-Ош"})
     assert Organization.objects.get().legal_name == "Мариам-Ош"
 
+    post_ok(boss_client, reverse("category_create"), {"name": "Зерно", "active": "on"})
+    grain = ProductCategory.objects.get(name="Зерно")
     post_ok(
         boss_client,
         reverse("product_create"),
-        {"sku": "SACK", "name": "Мешок", "kind": "SACK", "unit": "PCS", "active": "on"},
+        {"sku": "SACK", "name": "Мешок", "category": grain.pk, "unit": "PCS", "active": "on"},
     )
     post_ok(
         boss_client,
         reverse("product_create"),
-        {"sku": "WHEAT", "name": "Пшеница", "kind": "WHEAT", "unit": "KG", "active": "on"},
+        {"sku": "WHEAT", "name": "Пшеница", "category": grain.pk, "unit": "KG", "active": "on"},
     )
     wheat = Product.objects.get(sku="WHEAT")
     sack = Product.objects.get(sku="SACK")

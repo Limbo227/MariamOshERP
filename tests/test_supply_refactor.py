@@ -52,6 +52,8 @@ def mill():
     Organization.objects.create(legal_name="Мариам-Ош")
     raw = Warehouse.objects.create(code="raw", name="Склад сырья", kind=Warehouse.Kind.RAW)
     finished = Warehouse.objects.create(code="fg", name="Склад готовой продукции", kind=Warehouse.Kind.FINISHED)
+    finished.category = ProductCategory.objects.get(code="FLOUR")
+    finished.save(update_fields=["category"])
     supplier = Party.objects.create(name="Поставщик зерна", is_supplier=True)
     customer = Party.objects.create(name="Покупатель", is_customer=True)
     manas = save_station(name="Манас", country="Кыргызстан")
@@ -99,7 +101,7 @@ def test_custom_category_and_seeded_units():
     assert list(list_units().values_list("code", "name")) == [("BAG", "мш"), ("KG", "кг"), ("L", "литр"), ("PCS", "шт")]
     category = save_category(name="Подсолнечное масло", description="Жидкости")
     assert category.active is True
-    assert category.role == ProductCategory.Role.OTHER
+    assert category.name == "Подсолнечное масло"
     oil = save_product(sku="OIL", name="Подсолнечное масло", category=category, unit="L")
     assert oil.unit == "L"
     assert oil.unit_weight_kg is None
@@ -108,6 +110,21 @@ def test_custom_category_and_seeded_units():
     assert category.active is False
     with pytest.raises(ValidationError):
         save_product(sku="OIL2", name="Ещё масло", category=category, unit="L")
+
+
+def test_warehouse_without_category_accepts_any_product_and_a_limited_one_does_not():
+    from apps.inventory.checks import ensure_location
+    from apps.inventory.services import ensure_default_location
+
+    Organization.objects.create(legal_name="Мариам-Ош")
+    grain = save_category(name="Зерно")
+    sacks = save_category(name="Мешки")
+    wheat = save_product(sku="WHEAT-CAT", name="Пшеница", category=grain, unit="KG")
+    open_warehouse = Warehouse.objects.create(code="all", name="Общий", kind=Warehouse.Kind.RAW)
+    limited = Warehouse.objects.create(code="sacks", name="Мешки", kind=Warehouse.Kind.RAW, category=sacks)
+    ensure_location(wheat, ensure_default_location(open_warehouse))
+    with pytest.raises(ValidationError):
+        ensure_location(wheat, ensure_default_location(limited))
 
 
 def test_bag_sale_uses_bag_quantity_and_derives_weight():

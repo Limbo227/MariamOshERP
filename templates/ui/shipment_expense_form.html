@@ -1,0 +1,16 @@
+{% extends "ui/shell.html" %}
+{% block title %}Расход поставки — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Финансы / Расход поставки{% endblock %}
+{% block heading %}Расход поставки{% endblock %}
+{% block content %}
+  {% include "ui/_finance_tabs.html" %}
+  <p class="mb-4 max-w-2xl text-sm text-slate-600">Списание со счёта по статье расхода. Укажите конкретную поставку или всю спецификацию. Если указана поставка, спецификация подставится сама. Один документ не нужно учитывать дважды. Долг за пшеницу этот расход не уменьшает.</p>
+  <form method="post" class="card max-w-xl space-y-4 p-5">
+    {% csrf_token %}
+    {% include "ui/_form_fields.html" %}
+    <div class="flex flex-wrap gap-2">
+      <button class="btn-primary" data-confirm="Провести расход поставки?">Провести</button>
+      <a class="btn-ghost" href="{% url 'finance_home' %}">Отмена</a>
+    </div>
+  </form>
+{% endblock %}

@@ -8,9 +8,15 @@ from django.views.decorators.http import require_POST
 from apps.core.models import Party
 from apps.core.quantities import q_rate
 from apps.core.services import reverse_document
-from apps.finance.models import CashOperation, MoneyAccount, MoneyDocument, OpenItem
+from apps.finance.models import (
+    CashOperation,
+    ExpenseCategory,
+    MoneyAccount,
+    MoneyDocument,
+    OpenItem,
+)
 from apps.finance.queries import item_remaining, money_balance, supplier_balances
-from apps.finance.services import record_money
+from apps.finance.services import record_money, record_shipment_expense
 from apps.procurement.models import PurchaseOrder, Shipment
 from apps.ui.fields import StyledForm, date_field, money_field
 from apps.ui.formatting import format_rate
@@ -93,6 +99,59 @@ class ConvertForm(StyledForm):
         return cleaned
 
 
+class CustomerReceiptForm(StyledForm):
+    party = forms.ModelChoiceField(label="Покупатель", queryset=Party.objects.none())
+    account = forms.ModelChoiceField(label="Счёт зачисления", queryset=MoneyAccount.objects.none())
+    amount = money_field("Сумма")
+    effective_date = date_field("Дата")
+    external_reference = forms.CharField(label="Внешний номер", required=False)
+    note = forms.CharField(label="Комментарий", required=False, widget=forms.Textarea)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["party"].queryset = Party.objects.filter(is_customer=True, active=True).order_by("name")
+        self.fields["account"].queryset = MoneyAccount.objects.filter(active=True).order_by("name")
+        self.fields["account"].label_from_instance = _account_label
+
+
+class ShipmentExpenseForm(StyledForm):
+    category = forms.ModelChoiceField(label="Статья расхода", queryset=ExpenseCategory.objects.none())
+    account = forms.ModelChoiceField(label="Счёт оплаты", queryset=MoneyAccount.objects.none())
+    amount = money_field("Сумма")
+    effective_date = date_field("Дата")
+    order = forms.ModelChoiceField(label="Спецификация", queryset=PurchaseOrder.objects.none(), required=False)
+    shipment = forms.ModelChoiceField(label="Поставка", queryset=Shipment.objects.none(), required=False)
+    note = forms.CharField(label="Комментарий", required=False, widget=forms.Textarea)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["category"].queryset = ExpenseCategory.objects.filter(active=True).order_by("name")
+        self.fields["account"].queryset = MoneyAccount.objects.filter(active=True).order_by("name")
+        self.fields["account"].label_from_instance = _account_label
+        self.fields["order"].queryset = PurchaseOrder.objects.select_related("document", "supplier", "contract").order_by(
+            "-document__effective_date"
+        )
+        self.fields["order"].label_from_instance = lambda order: (
+            f"{order.contract.number} / {order.specification_number}"
+            if order.contract_id
+            else order.document.number
+        )
+        self.fields["order"].empty_label = "Не выбрана — взять из поставки"
+        self.fields["shipment"].queryset = Shipment.objects.select_related("order__document", "order__contract").order_by(
+            "-pk"
+        )
+        self.fields["shipment"].empty_label = "На всю спецификацию"
+        self.fields["shipment"].label_from_instance = lambda shipment: (
+            shipment.wagon_number or f"Поставка {shipment.pk}"
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("order") and not cleaned.get("shipment"):
+            self.add_error("order", "Укажите поставку или спецификацию.")
+        return cleaned
+
+
 class ExpenseForm(StyledForm):
     operation = forms.ModelChoiceField(label="Расход", queryset=CashOperation.objects.none())
     account = forms.ModelChoiceField(label="Счёт оплаты", queryset=MoneyAccount.objects.none())
@@ -168,14 +227,81 @@ def _allocations(post, debts):
 @erp_page
 def finance_home(request):
     accounts = _balances()
-    recent = MoneyDocument.objects.select_related("document", "operation", "account", "party", "counter_account").order_by(
-        "-document__effective_date", "-pk"
-    )[:15]
+    recent = MoneyDocument.objects.select_related(
+        "document", "operation", "account", "party", "counter_account", "expense_category"
+    ).order_by("-document__effective_date", "-pk")
+    effect = request.GET.get("effect", "")
+    account_id = request.GET.get("account", "")
+    if effect:
+        recent = recent.filter(operation__effect=effect)
+    if account_id:
+        recent = recent.filter(account_id=account_id)
     return render(
         request,
         "ui/finance_home.html",
-        {"accounts": accounts, "balances": supplier_balances(), "recent": recent},
+        {
+            "accounts": accounts,
+            "balances": supplier_balances(),
+            "recent": recent[:40],
+            "effect": effect,
+            "account": account_id,
+            "effects": CashOperation.Effect.choices,
+        },
     )
+
+
+@erp_page
+def customer_receipt_create(request):
+    form = CustomerReceiptForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            operation = CashOperation.objects.get(code="receive-customer", active=True)
+            money = record_money(
+                operation=operation,
+                account=data["account"],
+                amount=data["amount"],
+                effective_date=data["effective_date"],
+                party=data["party"],
+                external_reference=data.get("external_reference") or "",
+                note=data.get("note") or "",
+                actor=request.user,
+            )
+        except CashOperation.DoesNotExist:
+            form.add_error(None, "Операция «Поступление от покупателя» не настроена.")
+        except ValidationError as exc:
+            form.add_error(None, error_text(exc))
+        else:
+            messages.success(
+                request,
+                f"Поступление {money.document.number} проведено. Это деньги, без накладной и без склада.",
+            )
+            return redirect("money_detail", money.pk)
+    return render(request, "ui/customer_receipt_form.html", {"form": form})
+
+
+@erp_page
+def shipment_expense_create(request):
+    form = ShipmentExpenseForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            money = record_shipment_expense(
+                account=data["account"],
+                amount=data["amount"],
+                effective_date=data["effective_date"],
+                category=data["category"],
+                shipment=data.get("shipment"),
+                order=data.get("order"),
+                note=data.get("note") or "",
+                actor=request.user,
+            )
+        except ValidationError as exc:
+            form.add_error(None, error_text(exc))
+        else:
+            messages.success(request, f"Расход поставки {money.document.number} проведён. Долг за пшеницу не изменился.")
+            return redirect("money_detail", money.pk)
+    return render(request, "ui/shipment_expense_form.html", {"form": form})
 
 
 @erp_page

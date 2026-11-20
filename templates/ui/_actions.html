@@ -1,0 +1,11 @@
+<div class="flex justify-end gap-1 whitespace-nowrap">
+  {% if edit %}
+    <a class="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-800 no-underline hover:bg-slate-50" href="{{ edit }}">Изменить</a>
+  {% endif %}
+  {% if delete %}
+    <form method="post" action="{{ delete }}" class="inline">
+      {% csrf_token %}
+      <button class="inline-flex h-8 items-center rounded-md border border-red-200 bg-red-50 px-2.5 text-xs font-medium text-red-700 hover:bg-red-100" data-confirm="{{ confirm|default:'Удалить запись?' }}">Удалить</button>
+    </form>
+  {% endif %}
+</div>

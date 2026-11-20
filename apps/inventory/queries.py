@@ -32,12 +32,22 @@ def stock_by_unit():
     return rows
 
 
-def stock_by_warehouse(warehouse=None):
-    """On-hand quantity by warehouse and product. Storage locations stay internal."""
+def stock_by_warehouse(warehouse=None, product=None, category=None, as_of=None):
+    """On-hand quantity by warehouse and product. Storage locations stay internal.
+
+    Optional filters only limit which movements are summed. They do not change
+    how a movement was posted. ``as_of`` keeps movements on or before that date.
+    """
 
     rows = StockMove.objects.select_related("product", "location__warehouse")
     if warehouse is not None:
         rows = rows.filter(location__warehouse=warehouse)
+    if product is not None:
+        rows = rows.filter(product=product)
+    if category is not None:
+        rows = rows.filter(product__category=category)
+    if as_of is not None:
+        rows = rows.filter(effective_date__lte=as_of)
     totals = {}
     for move in rows:
         key = (move.location.warehouse_id, move.product_id)

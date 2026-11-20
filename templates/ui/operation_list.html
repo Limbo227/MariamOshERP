@@ -1,0 +1,22 @@
+{% extends "ui/shell.html" %}
+{% block title %}Виды операций — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Справочники / Виды операций{% endblock %}
+{% block heading %}Виды денежных операций{% endblock %}
+{% block content %}
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">Список утверждённых операций. Новый вид с собственными правилами дебета и кредита отсюда не создаётся. Рабочие формы: оплата поставщику, поступление от покупателя, общий расход, расход поставки, перевод и конвертация.</p>
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead class="bg-slate-50"><tr><th>Название</th><th>Код</th><th>Смысл</th><th>Состояние</th></tr></thead>
+      <tbody>
+        {% for row in operations %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td>{{ row.code }}</td>
+            <td>{{ row.get_effect_display }}</td>
+            <td>{% if row.active %}Доступна{% else %}Отключена{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Операций нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

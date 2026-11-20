@@ -29,20 +29,26 @@ DAY = date(2026, 11, 1)
 def mill(db):
     from apps.core.models import Party
     from apps.finance.models import MoneyAccount
-    from apps.inventory.models import StorageLocation, Warehouse
+    from apps.inventory.models import ProductCategory, StorageLocation, Warehouse
 
     Organization.objects.create(legal_name="Мариам-Ош")
     raw = Warehouse.objects.create(code="raw", name="Склад сырья", kind=Warehouse.Kind.RAW)
     finished = Warehouse.objects.create(code="fg", name="Склад готовой продукции", kind=Warehouse.Kind.FINISHED)
+    finished.category = ProductCategory.objects.get(code="FLOUR")
+    finished.save(update_fields=["category"])
     wheat_bin = StorageLocation.objects.create(warehouse=raw, name="Пшеница")
     sack_bin = StorageLocation.objects.create(warehouse=raw, name="Мешки")
     flour_bin = StorageLocation.objects.create(warehouse=finished, name="Мука")
-    wheat = Product.objects.create(sku="WHEAT", name="Пшеница", kind=Product.Kind.WHEAT, unit=Product.Unit.KG)
-    sack = Product.objects.create(sku="SACK", name="Мешок", kind=Product.Kind.SACK, unit=Product.Unit.PCS)
+    wheat = Product.objects.create(
+        sku="WHEAT", name="Пшеница", category=ProductCategory.objects.get(code="WHEAT"), unit=Product.Unit.KG
+    )
+    sack = Product.objects.create(
+        sku="SACK", name="Мешок", category=ProductCategory.objects.get(code="SACK"), unit=Product.Unit.PCS
+    )
     flour = Product.objects.create(
         sku="FLOUR",
         name="Мука",
-        kind=Product.Kind.FLOUR,
+        category=ProductCategory.objects.get(code="FLOUR"),
         unit=Product.Unit.KG,
         package_kg=Decimal("50"),
         sack=sack,

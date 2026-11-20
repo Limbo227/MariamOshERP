@@ -6,6 +6,7 @@
 {% block content %}
   <p class="text-sm text-slate-600">
     {% if organization %}{{ organization.legal_name }}. <a class="underline" href="{% url 'company' %}">Карточка организации</a>{% else %}<a class="underline" href="{% url 'company' %}">Создайте карточку организации</a>, иначе документы не проводятся.{% endif %}
+    <a class="underline" href="{% url 'product_list' %}">Номенклатура</a>
     Сводка читает проведённые записи. Килограммы и штуки, как и разные валюты, не складываются.
   </p>
 

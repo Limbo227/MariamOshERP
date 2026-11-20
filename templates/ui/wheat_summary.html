@@ -1,0 +1,157 @@
+{% extends "ui/shell.html" %}
+{% load ui_format %}
+{% block title %}Свод закупок — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Закупки / Свод{% endblock %}
+{% block heading %}Свод закупок пшеницы{% endblock %}
+{% block content %}
+  {% include "ui/_buying_tabs.html" %}
+  <p class="mb-4 max-w-4xl text-sm text-slate-600">
+    Принятый вес и долг берутся только из проведённых поставок и приёмок. Черновик показан отдельно и в долг не входит.
+    Дата фильтра — дата документа спецификации, а не дата оплаты. Суммы разных валют не складываются.
+    Нераспределённый платёж остаётся авансом поставщику и не закрывает конкретную спецификацию.
+  </p>
+  <form method="get" class="card mb-4 flex flex-wrap items-end gap-2 p-3">
+    <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+    <label class="text-sm">Поставщик
+      <select name="supplier" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in suppliers %}<option value="{{ row.pk }}" {% if supplier == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Договор
+      <select name="contract" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in contracts %}<option value="{{ row.pk }}" {% if contract == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.number }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Пшеница
+      <select name="product" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in products %}<option value="{{ row.pk }}" {% if product == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Станция
+      <select name="station" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for row in stations %}<option value="{{ row.pk }}" {% if station == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Состояние
+      <select name="status" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="">Все</option>
+        {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Сортировка
+      <select name="sort" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+        <option value="supplier" {% if sort == "supplier" %}selected{% endif %}>Поставщик</option>
+        <option value="contract" {% if sort == "contract" %}selected{% endif %}>Договор</option>
+        <option value="date" {% if sort == "date" %}selected{% endif %}>Дата</option>
+        <option value="status" {% if sort == "status" %}selected{% endif %}>Состояние</option>
+      </select>
+    </label>
+    <label class="text-sm">С<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+    <label class="text-sm">По<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+    <button class="btn-ghost">Показать</button>
+    <a class="btn-primary" href="{% url 'wheat_export' %}?{{ request.GET.urlencode }}">Excel</a>
+  </form>
+  {% if totals %}
+    <div class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {% for total in totals %}
+        <article class="card p-3 text-sm">
+          <p class="text-xs text-slate-500">Итого {{ total.currency }}</p>
+          <p class="mt-1 tabular-nums">План {{ total.planned_amount|money }}</p>
+          <p class="tabular-nums">Принято {{ total.accepted_amount|money }}</p>
+          <p class="tabular-nums">Оплачено {{ total.paid|money }}</p>
+          <p class="font-semibold tabular-nums">Долг {{ total.outstanding|money }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% for supplier_group in groups %}
+    <section class="mb-6">
+      <h2 class="mb-2 text-base font-semibold">{{ supplier_group.supplier.name }}</h2>
+      {% for contract_group in supplier_group.contracts %}
+        <h3 class="mb-2 text-sm font-medium text-slate-600">
+          <a class="underline" href="{% url 'contract_detail' contract_group.contract.pk %}">Договор {{ contract_group.contract.number }}</a>
+          · {{ contract_group.contract.currency }}
+        </h3>
+        <div class="card mb-4 overflow-x-auto">
+          <table class="data-table">
+            <thead class="bg-slate-50"><tr>
+              <th>Спецификация</th><th>Товар</th><th class="text-right">Цена / кг</th><th class="text-right">План</th>
+              <th class="text-right">Принято</th><th class="text-right">%</th><th class="text-right">План, сумма</th>
+              <th class="text-right">Принято, сумма</th><th class="text-right">Черновик, расчёт</th>
+              <th class="text-right">Оплачено</th><th class="text-right">Долг</th><th>Состояние</th>
+            </tr></thead>
+            <tbody>
+              {% for row in contract_group.rows %}
+                <tr>
+                  <td>
+                    <a class="font-medium text-teal-800 underline" href="{% url 'purchase_detail' row.order.pk %}">{{ row.order.specification_number }}</a>
+                    {% url 'purchase_edit' row.order.pk as edit_url %}{% url 'purchase_delete' row.order.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить спецификацию? Если есть поставки или приёмки, удаление будет отклонено." %}
+                  </td>
+                  <td>{{ row.product.name|default:"—" }}</td>
+                  <td class="text-right tabular-nums">{{ row.price|money }} {{ row.currency }}</td>
+                  <td class="text-right tabular-nums">{{ row.planned_qty|qty }} кг{% if row.planned_tonnes %} <span class="text-slate-500">/ {{ row.planned_tonnes|qty }} т</span>{% endif %}</td>
+                  <td class="text-right tabular-nums">{{ row.received_qty|qty }}</td>
+                  <td class="text-right">
+                    <span class="tabular-nums">{% if row.percent is not None %}{{ row.percent }}%{% else %}—{% endif %}</span>
+                    <span class="mt-1 block h-1.5 w-16 overflow-hidden rounded bg-slate-200"><span class="block h-full bg-teal-brand" style="width: {{ row.bar }}%"></span></span>
+                  </td>
+                  <td class="text-right tabular-nums">{{ row.planned_amount|money }}</td>
+                  <td class="text-right tabular-nums">{{ row.accepted_amount|money }}</td>
+                  <td class="text-right tabular-nums text-slate-500">{% if row.draft_amount %}{{ row.draft_amount|money }}{% else %}—{% endif %}</td>
+                  <td class="text-right tabular-nums">{{ row.paid|money }}</td>
+                  <td class="text-right font-medium tabular-nums">{{ row.outstanding|money }}</td>
+                  <td>
+                    {% if row.status == "COMPLETED" %}
+                      <span class="chip bg-slate-200 text-slate-700">{{ row.status_label }}</span>
+                    {% else %}
+                      <span class="chip bg-emerald-100 text-emerald-900">{{ row.status_label }}</span>
+                    {% endif %}
+                    {% if row.warning %}<span class="mt-1 block text-xs text-amber-700">{{ row.warning }}</span>{% endif %}
+                  </td>
+                </tr>
+                <tr class="bg-slate-50/70">
+                  <td colspan="12" class="text-xs text-slate-600">
+                    Допуск {{ row.tolerance|qty }}%. Черновик {{ row.draft_qty|qty }} кг не входит в «Принято».
+                    {% if row.shipments %}
+                      <details class="mt-1">
+                        <summary class="cursor-pointer text-teal-800">Поставки</summary>
+                        <table class="mt-2 min-w-full">
+                          <thead><tr><th>№</th><th>Отправление</th><th>Приёмка</th><th>Станция</th><th class="text-right">Вагоны</th><th class="text-right">Вес, кг</th><th class="text-right">Сумма</th><th>Статус</th></tr></thead>
+                          <tbody>
+                            {% for item in row.shipments %}
+                              <tr>
+                                <td><a class="underline" href="{% url 'shipment_detail' item.shipment.pk %}">{{ item.shipment.pk }}</a></td>
+                                <td>{% if item.shipment.departure_date %}{{ item.shipment.departure_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+                                <td>{% if item.shipment.arrival_date %}{{ item.shipment.arrival_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+                                <td>{{ item.shipment.departure_station|default:"—" }}</td>
+                                <td class="text-right tabular-nums">{{ item.shipment.wagon_count }}</td>
+                                <td class="text-right tabular-nums">{{ item.shipment.quantity|qty }}</td>
+                                <td class="text-right tabular-nums">
+                                  {% if item.shipment.status == "POSTED" %}{{ item.amount|money }} {{ item.currency }}{% elif item.theoretical %}черновик {{ item.theoretical|money }}{% else %}—{% endif %}
+                                </td>
+                                <td>{{ item.shipment.get_status_display }}</td>
+                              </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </details>
+                    {% else %}
+                      Поставок нет.
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+    </section>
+  {% empty %}
+    <p class="card px-4 py-8 text-center text-sm text-slate-500">Спецификаций по этому фильтру нет.</p>
+  {% endfor %}
+  {% include "ui/_pagination.html" %}
+{% endblock %}

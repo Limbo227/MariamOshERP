@@ -33,9 +33,19 @@ def format_rate(value):
     return text.replace(".", ",")
 
 
+_UNIT_LABELS = {
+    "PCS": "шт",
+    "KG": "кг",
+    "L": "л",
+    "BAG": "мш",
+}
+
+
 def unit_label(code):
     if not code:
         return ""
+    if code in _UNIT_LABELS:
+        return _UNIT_LABELS[code]
     try:
         return Product.Unit(code).label
     except ValueError:
