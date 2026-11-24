@@ -5,9 +5,21 @@ from django.core.exceptions import ValidationError
 from apps.inventory.models import Product
 
 
+def ensure_whole(product, quantity):
+    """Pieces and sacks are counted whole: 10 000,5 sacks is a typo, not a quantity."""
+    if product is None or quantity is None:
+        return
+    if product.unit in (Product.Unit.PCS, Product.Unit.BAG):
+        value = Decimal(quantity)
+        if value != value.to_integral_value():
+            unit = "мешков" if product.unit == Product.Unit.BAG else "штук"
+            raise ValidationError(f"«{product.name}» считается в {unit}: укажите целое число.")
+
+
 def ensure_packaging(product, quantity, bags):
     if product is None:
         return
+    ensure_whole(product, quantity)
     if product.unit == Product.Unit.KG and product.package_kg:
         if bags is None or bags <= 0:
             raise ValidationError("Для товара с массой мешка укажите число мешков.")

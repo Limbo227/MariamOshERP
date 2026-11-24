@@ -1,12 +1,14 @@
 from datetime import date
 
+from django.db.models import Q
 from django.shortcuts import render
 from django.urls import reverse
 
+from apps.core.models import Document
 from apps.finance.models import MoneyDocument
 from apps.inventory.models import GoodsReceipt, Product, ProductCategory, StockMove, Warehouse
 from apps.inventory.queries import stock_by_warehouse
-from apps.ui.http import erp_page, pager
+from apps.ui.http import erp_page, pager, show_cancelled, without_cancelled
 
 
 def _as_of(value):
@@ -62,12 +64,21 @@ def move_list(request):
         qs = qs.filter(effective_date__gte=date_from)
     if date_to:
         qs = qs.filter(effective_date__lte=date_to)
+    cancelled = show_cancelled(request)
+    if not cancelled:
+        qs = without_cancelled(qs)
     page, query = pager(request, qs)
     moves = list(page.object_list)
     doc_ids = [move.document_id for move in moves]
+    cancelled_docs = set(
+        Document.objects.filter(pk__in=doc_ids)
+        .filter(Q(kind=Document.Kind.REVERSAL) | Q(reversal__isnull=False))
+        .values_list("pk", flat=True)
+    )
     receipts = dict(GoodsReceipt.objects.filter(document_id__in=doc_ids).values_list("document_id", "pk"))
     money = dict(MoneyDocument.objects.filter(document_id__in=doc_ids).values_list("document_id", "pk"))
     for move in moves:
+        move.is_cancelled = move.document_id in cancelled_docs
         move.ui_url = ""
         if move.document_id in receipts:
             move.ui_url = reverse("receipt_detail", args=[receipts[move.document_id]])
@@ -86,5 +97,6 @@ def move_list(request):
             "product": product,
             "date_from": date_from,
             "date_to": date_to,
+            "cancelled": cancelled,
         },
     )

@@ -1,9 +1,14 @@
-{% load ui_format %}
-<nav class="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Закупки">
-  <a class="{% tab_class request 'wheat_summary' %}" href="{% url 'wheat_summary' %}">Свод</a>
-  <a class="{% tab_class request 'contract_list' 'contract_detail' 'contract_create' 'contract_edit' %}" href="{% url 'contract_list' %}">Контракты</a>
-  <a class="{% tab_class request 'specification_list' 'specification_create' %}" href="{% url 'specification_list' %}">Спецификации</a>
-  <a class="{% tab_class request 'shipment_list' 'shipment_create' 'shipment_detail' %}" href="{% url 'shipment_list' %}">Поставки пшеницы</a>
-  <a class="{% tab_class request 'materials_monitor' 'purchase_list' 'purchase_create' %}" href="{% url 'materials_monitor' %}">Заказы товаров</a>
+{% load ui_format %}{% section_of request as section %}
+{% if section == "goods" %}
+<nav class="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Закупка товаров">
+  <a class="{% tab_class request 'materials_monitor' 'purchase_list' 'purchase_create' 'purchase_detail' 'purchase_edit' %}" href="{% url 'materials_monitor' %}">Заказы</a>
   <a class="{% tab_class request 'receipt_list' 'receipt_create' 'receipt_detail' %}" href="{% url 'receipt_list' %}">Приёмки</a>
 </nav>
+{% else %}
+<nav class="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Пшеница">
+  <a class="{% tab_class request 'wheat_summary' %}" href="{% url 'wheat_summary' %}">Свод</a>
+  <a class="{% tab_class request 'contract_list' 'contract_detail' 'contract_create' 'contract_edit' %}" href="{% url 'contract_list' %}">Договоры</a>
+  <a class="{% tab_class request 'specification_list' 'specification_create' 'purchase_detail' 'purchase_edit' %}" href="{% url 'specification_list' %}">Спецификации</a>
+  <a class="{% tab_class request 'shipment_list' 'shipment_create' 'shipment_detail' 'shipment_edit' %}" href="{% url 'shipment_list' %}">Поставки</a>
+</nav>
+{% endif %}

@@ -5,7 +5,7 @@ from django.db.models.functions import Coalesce
 from django.urls import reverse
 
 from apps.core.models import Document, Organization, Party
-from apps.finance.models import CashOperation, MoneyDocument
+from apps.finance.models import CashOperation, MoneyDocument, MoneyMove
 from apps.finance.queries import supplier_balances
 from apps.inventory.models import GoodsReceipt
 from apps.inventory.queries import stock_by_unit
@@ -37,10 +37,21 @@ def dashboard_context():
         "stock": stock_by_unit(),
         "payables": balances["payable"],
         "advances": balances["advances"],
+        "money": _money_by_currency(),
         "recent_purchases": _recent_purchases(),
         "incoming_shipments": _incoming_shipments(),
         "recent_operations": _recent_operations(),
     }
+
+
+def _money_by_currency():
+    rows = (
+        MoneyMove.objects.values("account__currency")
+        .annotate(total=Sum("amount_delta"))
+        .exclude(total=0)
+        .order_by("account__currency")
+    )
+    return [{"currency": row["account__currency"], "amount": row["total"]} for row in rows]
 
 
 def _recent_purchases():

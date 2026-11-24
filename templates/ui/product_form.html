@@ -1,11 +1,53 @@
 {% extends "ui/shell.html" %}
 {% block title %}Товар — Мариам-Ош ERP{% endblock %}
-{% block breadcrumb %}Справочники / Товары{% endblock %}
+{% block breadcrumb %}Справочники / Номенклатура{% endblock %}
 {% block heading %}{% if product %}{{ product.name }}{% else %}Новый товар{% endif %}{% endblock %}
 {% block content %}
-  <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+  <form method="post" id="product-form" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     {% csrf_token %}
     {% include "ui/_form_fields.html" %}
-    <button class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white">Сохранить</button>
+    <p id="pack-preview" class="hidden rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700"></p>
+    {% if not categories_exist %}
+      <p class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Категорий пока нет. <a class="underline" href="{% url 'category_create' %}?next={{ request.path|urlencode }}">Создать категорию</a></p>
+    {% endif %}
+    <div class="flex flex-wrap gap-2">
+      <button class="btn-primary">Сохранить</button>
+      <a class="btn-ghost" href="{% if product %}{% url 'product_detail' product.pk %}{% else %}{% url 'product_list' %}{% endif %}">Отмена</a>
+      <a class="self-center text-sm text-teal-800 underline" href="{% url 'category_create' %}?next={{ request.path|urlencode }}">+ новая категория</a>
+    </div>
   </form>
+  <script>
+    (function () {
+      var form = document.getElementById("product-form");
+      var kind = form.querySelector("[name=kind]");
+      var unit = form.querySelector("[name=unit]");
+      var weight = form.querySelector("[name=unit_weight_kg]");
+      var preview = document.getElementById("pack-preview");
+      var map = JSON.parse(kind.dataset.kindUnits || "{}");
+      var weightBox = weight.closest("label");
+      function sync() {
+        var allowed = map[kind.value] || [];
+        if (!unit.disabled) {
+          Array.prototype.forEach.call(unit.options, function (o) { o.hidden = allowed.length && allowed.indexOf(o.value) === -1; });
+          if (allowed.length && allowed.indexOf(unit.value) === -1) unit.value = allowed[0];
+        }
+        var bag = unit.value === "BAG";
+        weightBox.style.display = bag ? "" : "none";
+        var kg = parseFloat(String(weight.value || "").replace(",", "."));
+        if (bag && kg) {
+          preview.textContent = "На складе будет так: 500 меш. (" + (500 * kg).toLocaleString("ru-RU") + " кг).";
+          preview.classList.remove("hidden");
+        } else {
+          preview.classList.add("hidden");
+        }
+      }
+      kind.addEventListener("change", function () {
+        var allowed = map[kind.value] || [];
+        if (!unit.disabled && allowed.length) unit.value = allowed[0];
+        sync();
+      });
+      [unit, weight].forEach(function (el) { el.addEventListener("change", sync); el.addEventListener("input", sync); });
+      sync();
+    })();
+  </script>
 {% endblock %}

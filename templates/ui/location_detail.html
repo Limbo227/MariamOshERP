@@ -5,7 +5,7 @@
 {% block content %}
   <div class="mb-4 flex gap-2">
     <a class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm" href="{% url 'location_edit' location.pk %}">Изменить</a>
-    <form method="post" action="{% url 'location_toggle' location.pk %}">{% csrf_token %}<button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">{% if location.active %}Отключить{% else %}Включить{% endif %}</button></form>
+    <form method="post" action="{% url 'location_toggle' location.pk %}">{% csrf_token %}<button class="btn-ghost">{% if location.active %}Отключить{% else %}Включить{% endif %}</button></form>
   </div>
   <dl class="grid max-w-xl gap-4 rounded-xl border border-slate-200 bg-white p-5">
     <div><dt class="text-xs text-slate-500">Склад</dt><dd><a class="underline" href="{% url 'warehouse_detail' location.warehouse.pk %}">{{ location.warehouse.name }}</a></dd></div>

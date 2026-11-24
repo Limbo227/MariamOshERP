@@ -3,6 +3,7 @@
 {% block breadcrumb %}{% if editing %}Поставки / Изменить{% else %}Поставки / Новая{% endif %}{% endblock %}
 {% block heading %}{% if editing %}Изменить поставку {{ editing.pk }}{% else %}Новая поставка{% endif %}{% endblock %}
 {% block content %}
+  {% include "ui/_buying_tabs.html" %}
   <p class="mb-4 max-w-2xl text-sm text-slate-600">Черновик не меняет склад. Проведение поставки принимает вес и создаёт долг поставщику.</p>
   <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     {% csrf_token %}

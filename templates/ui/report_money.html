@@ -4,6 +4,7 @@
 {% block breadcrumb %}Отчёты / Банк и касса{% endblock %}
 {% block heading %}Банк и касса{% endblock %}
 {% block content %}
+  {% include "ui/_report_tabs.html" %}
   <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
     <label class="text-sm">С<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
     <label class="text-sm">По<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>

@@ -12,13 +12,13 @@
         </a>
       </div>
       <nav class="flex flex-1 flex-col gap-0.5 px-3 py-4" aria-label="Разделы">
-        <a class="{% nav_class request 'dashboard' %}" href="{% url 'dashboard' %}">Главная</a>
-        <a class="{% nav_class request 'wheat_summary' 'contract_list' 'contract_create' 'contract_detail' 'contract_edit' 'specification_list' 'specification_create' 'receipt_list' 'receipt_create' 'receipt_detail' 'purchase_detail' 'purchase_edit' %}" href="{% url 'wheat_summary' %}">Закупки</a>
-        <a class="{% nav_class request 'shipment_list' 'shipment_create' 'shipment_detail' 'shipment_edit' %}" href="{% url 'shipment_list' %}">Поставки</a>
-        <a class="{% nav_class request 'purchase_list' 'purchase_create' 'materials_monitor' %}" href="{% url 'purchase_list' %}">Заказы товаров</a>
-        <a class="{% nav_class request 'finance_home' 'payment_create' 'customer_receipt_create' 'transfer_create' 'convert_create' 'expense_create' 'shipment_expense_create' 'money_detail' 'bank_list' 'cash_list' %}" href="{% url 'finance_home' %}">Финансы</a>
-        <a class="{% nav_class request 'stock_list' 'move_list' %}" href="{% url 'stock_list' %}">Склад</a>
-        <a class="{% nav_class request 'directory_home' 'product_list' 'product_create' 'product_detail' 'product_edit' 'party_list' 'party_detail' 'party_edit' 'warehouse_list' 'category_list' 'station_list' 'term_list' 'expense_category_list' 'unit_list' 'operation_list' 'company' %}" href="{% url 'directory_home' %}">Справочники</a>
+        <a class="{% section_class request 'dashboard' %}" href="{% url 'dashboard' %}">Главная</a>
+        <a class="{% section_class request 'wheat' %}" href="{% url 'wheat_summary' %}">Пшеница</a>
+        <a class="{% section_class request 'goods' %}" href="{% url 'materials_monitor' %}">Закупка товаров</a>
+        <a class="{% section_class request 'finance' %}" href="{% url 'finance_home' %}">Финансы</a>
+        <a class="{% section_class request 'stock' %}" href="{% url 'stock_list' %}">Склад</a>
+        <a class="{% section_class request 'reports' %}" href="{% url 'report_procurement' %}">Отчёты</a>
+        <a class="{% section_class request 'directories' %}" href="{% url 'directory_home' %}">Справочники</a>
       </nav>
     </aside>
     <div class="min-w-0 flex-1">
@@ -42,7 +42,7 @@
         {% if messages %}
           <ul class="mb-4 space-y-2">
             {% for message in messages %}
-              <li class="rounded-md border px-3 py-2 text-sm {% if 'error' in message.tags %}border-red-300 bg-red-50 text-red-900{% elif 'success' in message.tags %}border-emerald-300 bg-emerald-50 text-emerald-900{% else %}border-amber-300 bg-amber-50{% endif %}">{{ message }}</li>
+              <li class="rounded-md border px-3 py-2 text-sm {% if 'error' in message.tags %}border-red-300 bg-red-50 text-red-900{% elif 'success' in message.tags %}border-emerald-300 bg-emerald-50 text-emerald-900{% else %}border-amber-300 bg-amber-50{% endif %}">{{ message|friendly }}</li>
             {% endfor %}
           </ul>
         {% endif %}

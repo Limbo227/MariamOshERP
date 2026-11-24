@@ -1,0 +1,5 @@
+{% load ui_format %}
+<nav class="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Склад">
+  <a class="{% tab_class request 'stock_list' %}" href="{% url 'stock_list' %}">Остатки</a>
+  <a class="{% tab_class request 'move_list' %}" href="{% url 'move_list' %}">Движения</a>
+</nav>

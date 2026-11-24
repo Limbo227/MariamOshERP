@@ -4,6 +4,7 @@
 {% block breadcrumb %}Склад / Остатки{% endblock %}
 {% block heading %}Остатки{% endblock %}
 {% block content %}
+  {% include "ui/_stock_tabs.html" %}
   <p class="mb-4 max-w-3xl text-sm text-slate-600">Количество в единице товара. Колонка «кг, расчёт» — производный вес, если у единицы задана масса. Места внутри склада не показываются. Дата ограничивает сумму движений по эту дату включительно; пустая дата — текущий остаток.</p>
   <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
     <label class="text-sm">Склад

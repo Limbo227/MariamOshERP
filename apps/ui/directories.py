@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from apps.finance.models import CashOperation, ExpenseCategory
@@ -87,6 +88,9 @@ def category_create(request):
             form.add_error(None, error_text(exc))
         else:
             messages.success(request, "Категория сохранена.")
+            back = request.GET.get("next", "")
+            if url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}) and back.startswith("/"):
+                return redirect(back)
             return redirect("category_list")
     return render(request, "ui/directory_form.html", {"form": form, "heading": "Новая категория", "cancel": "category_list"})
 

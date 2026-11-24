@@ -16,6 +16,7 @@
       </label>
       <label class="text-sm">С<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
       <label class="text-sm">По<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+      {% include "ui/_cancelled_toggle.html" %}
       <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Найти</button>
     </form>
     <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'receipt_create' %}">Новая приёмка</a>
@@ -27,12 +28,12 @@
       </tr></thead>
       <tbody>
         {% for receipt in page %}
-          <tr class="border-t border-slate-100">
-            <td class="px-3 py-2"><a class="underline" href="{% url 'receipt_detail' receipt.pk %}">{{ receipt.document.number }}</a></td>
+          <tr class="border-t border-slate-100 {% if receipt.is_cancelled %}text-slate-400{% endif %}">
+            <td class="px-3 py-2"><a class="underline {% if receipt.is_cancelled %}line-through{% endif %}" href="{% url 'receipt_detail' receipt.pk %}">{{ receipt.document.number }}</a>{% if receipt.is_cancelled %} <span class="chip bg-red-100 text-red-800">Отменена</span>{% endif %}{% if receipt.shipment_id %} <span class="chip bg-slate-100 text-slate-700">из поставки №{{ receipt.shipment_id }}</span>{% endif %}</td>
             <td class="px-3 py-2">{{ receipt.document.effective_date|date:"d.m.Y" }}</td>
             <td class="px-3 py-2">{{ receipt.supplier.name }}</td>
             <td class="px-3 py-2">{{ receipt.warehouse.name }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ receipt.accepted_qty|qty }}</td>
+            <td class="px-3 py-2 text-right tabular-nums {% if receipt.is_cancelled %}line-through{% endif %}">{{ receipt.accepted_qty|qty }}</td>
           </tr>
         {% empty %}<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">Приёмок нет.</td></tr>{% endfor %}
       </tbody>

@@ -14,7 +14,7 @@
             <td>{{ row.station_code|default:"—" }}</td>
             <td>{{ row.country|default:"—" }}</td>
             <td>{% if row.active %}Действует{% else %}Отключена{% endif %}</td>
-            <td>{% url 'station_edit' row.pk as edit_url %}{% url 'station_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить станцию? Если она указана в поставке, запись будет отключена." %}</td>
+            <td>{% url 'station_edit' row.pk as edit_url %}{% url 'station_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить станцию? Если она уже указана в поставке, удалить не получится." %}</td>
           </tr>
         {% empty %}<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">Станций нет.</td></tr>{% endfor %}
       </tbody>

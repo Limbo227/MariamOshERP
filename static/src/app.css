@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../../templates";
+@source "../../apps/ui";
 
 @theme {
   --color-navy: #0c2340;
@@ -16,6 +17,9 @@
   }
   .btn-ghost {
     @apply inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-800 no-underline hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply inline-flex min-h-10 items-center justify-center rounded-md border border-red-200 bg-white px-4 text-sm text-red-700 no-underline hover:bg-red-50;
   }
   .card {
     @apply rounded-xl border border-line bg-white shadow-sm;

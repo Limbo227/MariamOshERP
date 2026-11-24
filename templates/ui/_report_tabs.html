@@ -1,0 +1,7 @@
+{% load ui_format %}
+<nav class="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Отчёты">
+  <a class="{% tab_class request 'report_procurement' %}" href="{% url 'report_procurement' %}">Закупки</a>
+  <a class="{% tab_class request 'report_shipments' %}" href="{% url 'report_shipments' %}">Поставки</a>
+  <a class="{% tab_class request 'report_suppliers' %}" href="{% url 'report_suppliers' %}">Долги поставщикам</a>
+  <a class="{% tab_class request 'report_money' %}" href="{% url 'report_money' %}">Банк и касса</a>
+</nav>

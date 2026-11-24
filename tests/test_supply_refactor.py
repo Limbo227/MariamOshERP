@@ -98,7 +98,7 @@ def _spec(mill, quantity="1500000", price="20", number="11", tolerance="10"):
 
 def test_custom_category_and_seeded_units():
     Organization.objects.create(legal_name="Мариам-Ош")
-    assert list(list_units().values_list("code", "name")) == [("BAG", "мш"), ("KG", "кг"), ("L", "литр"), ("PCS", "шт")]
+    assert list(list_units().values_list("code", "name")) == [("BAG", "мешок"), ("KG", "кг"), ("L", "литр"), ("PCS", "шт")]
     category = save_category(name="Подсолнечное масло", description="Жидкости")
     assert category.active is True
     assert category.name == "Подсолнечное масло"

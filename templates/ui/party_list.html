@@ -43,7 +43,7 @@
             <td class="px-3 py-2">{% if party.is_customer %}Да{% else %}Нет{% endif %}</td>
             <td class="px-3 py-2">{% if party.is_employee %}Да{% else %}Нет{% endif %}</td>
             <td class="px-3 py-2">{% if party.active %}Активен{% else %}Отключён{% endif %}</td>
-            <td class="px-3 py-2">{% url 'party_edit' party.pk as edit_url %}{% url 'party_delete' party.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить контрагента? Если он уже в документах, запись будет отключена." %}</td>
+            <td class="px-3 py-2">{% url 'party_edit' party.pk as edit_url %}{% url 'party_delete' party.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить контрагента? Если он уже в документах, удалить не получится." %}</td>
           </tr>
         {% empty %}
           <tr><td colspan="6" class="px-3 py-8 text-center text-slate-500">Контрагентов нет.</td></tr>

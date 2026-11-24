@@ -1,0 +1,26 @@
+{% comment %}
+  Shared "cancel document" block. Accounting stays a reversal (history is kept); on screen it is simply «Отменён».
+  Params: action (url), reversal (Document or None), today (date), what (e.g. "приёмку"), effect (sentence).
+{% endcomment %}
+{% if reversal %}
+  <div class="mb-6 max-w-3xl rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+    <p class="font-semibold">Документ отменён {{ reversal.effective_date|date:"d.m.Y" }}</p>
+    <p>Причина: {{ reversal.note|default:"не указана" }}</p>
+    <p class="mt-1 text-xs text-red-800">В учёте записана обратная операция {{ reversal.number }}, поэтому склад, деньги и долг вернулись как было. В списках документ показан зачёркнутым.</p>
+  </div>
+{% else %}
+  <details class="mb-6 max-w-xl">
+    <summary class="inline-flex min-h-10 cursor-pointer list-none items-center rounded-md border border-red-200 bg-white px-4 text-sm text-red-700 hover:bg-red-50">Отменить документ…</summary>
+    <form method="post" action="{{ action }}" class="mt-2 space-y-3 rounded-xl border border-red-200 bg-white p-5">
+      {% csrf_token %}
+      <p class="text-sm text-slate-700">{{ effect }}</p>
+      <label class="block text-sm"><span class="font-medium">Дата отмены</span>
+        <input type="date" name="effective_date" value="{{ today|date:'Y-m-d' }}" required class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+      </label>
+      <label class="block text-sm"><span class="font-medium">Причина <span class="text-red-600">*</span></span>
+        <textarea name="note" rows="2" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="Например: ошибка в количестве"></textarea>
+      </label>
+      <button class="min-h-11 rounded-md bg-red-700 px-4 text-sm text-white" data-confirm="Отменить {{ what }}? Это действие не удаляет документ, а возвращает склад, деньги и долг как было.">Отменить {{ what }}</button>
+    </form>
+  </details>
+{% endif %}

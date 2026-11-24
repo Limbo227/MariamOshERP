@@ -5,16 +5,16 @@
 {% block content %}
   <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'party_list' %}"><h2 class="font-semibold text-navy">Контрагенты</h2><p class="mt-1 text-sm text-slate-500">Поставщики и покупатели</p></a>
-    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'product_list' %}"><h2 class="font-semibold text-navy">Номенклатура</h2><p class="mt-1 text-sm text-slate-500">Товары и единицы учёта</p></a>
+    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'product_list' %}"><h2 class="font-semibold text-navy">Номенклатура</h2><p class="mt-1 text-sm text-slate-500">Зерно, сырьё, тара, готовая продукция</p></a>
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'category_list' %}"><h2 class="font-semibold text-navy">Категории товаров</h2><p class="mt-1 text-sm text-slate-500">{{ counts.categories }}</p></a>
-    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'warehouse_list' %}"><h2 class="font-semibold text-navy">Склады</h2><p class="mt-1 text-sm text-slate-500">Физические склады</p></a>
+    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'warehouse_list' %}"><h2 class="font-semibold text-navy">Склады</h2><p class="mt-1 text-sm text-slate-500">Элеваторы и склады</p></a>
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'station_list' %}"><h2 class="font-semibold text-navy">ЖД станции</h2><p class="mt-1 text-sm text-slate-500">{{ counts.stations }}</p></a>
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'term_list' %}"><h2 class="font-semibold text-navy">Условия поставки</h2><p class="mt-1 text-sm text-slate-500">{{ counts.terms }}</p></a>
-    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'bank_list' %}"><h2 class="font-semibold text-navy">Банковские счета</h2><p class="mt-1 text-sm text-slate-500">И кассы</p></a>
+    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'bank_list' %}"><h2 class="font-semibold text-navy">Банковские счета</h2><p class="mt-1 text-sm text-slate-500">Счета в банках</p></a>
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'cash_list' %}"><h2 class="font-semibold text-navy">Кассы</h2><p class="mt-1 text-sm text-slate-500">Наличные счета</p></a>
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'expense_category_list' %}"><h2 class="font-semibold text-navy">Статьи расходов</h2><p class="mt-1 text-sm text-slate-500">{{ counts.expenses }}</p></a>
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'unit_list' %}"><h2 class="font-semibold text-navy">Единицы</h2><p class="mt-1 text-sm text-slate-500">{{ counts.units }} фиксированных</p></a>
     <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'operation_list' %}"><h2 class="font-semibold text-navy">Виды операций</h2><p class="mt-1 text-sm text-slate-500">Только просмотр, {{ counts.operations }}</p></a>
-    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'company' %}"><h2 class="font-semibold text-navy">Организация</h2><p class="mt-1 text-sm text-slate-500">Название</p></a>
+    <a class="card p-4 no-underline hover:border-teal-brand" href="{% url 'company' %}"><h2 class="font-semibold text-navy">Организация</h2><p class="mt-1 text-sm text-slate-500">Название нашей компании</p></a>
   </div>
 {% endblock %}

@@ -2,30 +2,39 @@
 {% load ui_format %}
 {% block title %}{{ money.document.number }} — Мариам-Ош ERP{% endblock %}
 {% block breadcrumb %}Финансы / {{ money.document.number }}{% endblock %}
-{% block heading %}{{ money.operation.name }} {{ money.document.number }}{% endblock %}
+{% block heading %}{{ money.operation.name }} {{ money.document.number }}{% if reversal %} <span class="chip bg-red-100 align-middle text-red-800">Отменён</span>{% endif %}{% endblock %}
 {% block content %}
+  <p class="mb-3"><a class="text-sm text-teal-800 underline" href="{% url 'finance_home' %}">← Журнал операций</a></p>
   <dl class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
     <div><dt class="text-xs text-slate-500">Дата</dt><dd>{{ money.document.effective_date|date:"d.m.Y" }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Счёт</dt><dd>{{ money.account.name }} {{ money.account.currency }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Сумма</dt><dd class="tabular-nums">{{ money.amount|money }} {{ money.account.currency }}</dd></div>
-    {% if money.counter_account %}<div><dt class="text-xs text-slate-500">Второй счёт</dt><dd>{{ money.counter_account.name }} {{ money.counter_account.currency }}</dd></div>{% endif %}
+    <div><dt class="text-xs text-slate-500">Счёт</dt><dd>{{ money.account.name }}{% if money.account.currency not in money.account.name %} ({{ money.account.currency }}){% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Сумма</dt><dd class="tabular-nums {% if reversal %}text-slate-400 line-through{% endif %}">{{ money.amount|money }} {{ money.account.currency }}</dd></div>
+    {% if money.counter_account %}<div><dt class="text-xs text-slate-500">Второй счёт</dt><dd>{{ money.counter_account.name }}{% if money.counter_account.currency not in money.counter_account.name %} ({{ money.counter_account.currency }}){% endif %}</dd></div>{% endif %}
     {% if money.destination_amount %}<div><dt class="text-xs text-slate-500">Зачислено</dt><dd class="tabular-nums">{{ money.destination_amount|money }} {{ money.counter_account.currency }}</dd></div>{% endif %}
     {% if money.rate %}<div><dt class="text-xs text-slate-500">Курс</dt><dd class="tabular-nums">{{ money.rate|rate }}</dd></div>{% endif %}
     {% if money.party %}<div><dt class="text-xs text-slate-500">Контрагент</dt><dd>{{ money.party.name }}</dd></div>{% endif %}
-    {% if money.order_id %}<div><dt class="text-xs text-slate-500">Закупка</dt><dd><a class="underline" href="{% url 'purchase_detail' money.order_id %}">{{ money.order.document.number }}</a></dd></div>{% endif %}
-    {% if money.shipment_id %}<div><dt class="text-xs text-slate-500">Вагон</dt><dd><a class="underline" href="{% url 'shipment_detail' money.shipment_id %}">{{ money.shipment.wagon_number|default:money.shipment_id }}</a></dd></div>{% endif %}
-    <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if reversal %}Сторнирован{% else %}Проведён{% endif %}</dd></div>
+    {% if money.expense_category %}<div><dt class="text-xs text-slate-500">Статья расхода</dt><dd>{{ money.expense_category.name }}</dd></div>{% endif %}
+    {% if money.order_id %}<div><dt class="text-xs text-slate-500">Закупка</dt><dd><a class="underline" href="{% url 'purchase_detail' money.order_id %}">{% if money.order.specification_number %}{{ money.order.contract.number }} / спец. {{ money.order.specification_number }}{% else %}{{ money.order.document.number }}{% endif %}</a></dd></div>{% endif %}
+    {% if money.shipment_id %}<div><dt class="text-xs text-slate-500">Поставка</dt><dd><a class="underline" href="{% url 'shipment_detail' money.shipment_id %}">№{{ money.shipment_id }}{% if money.shipment.wagon_number %} — ваг. {{ money.shipment.wagon_number }}{% endif %}</a></dd></div>{% endif %}
+    {% if money.external_reference %}<div><dt class="text-xs text-slate-500">Внешний номер</dt><dd>{{ money.external_reference }}</dd></div>{% endif %}
+    <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if reversal %}<span class="text-red-700">Отменён</span>{% else %}Проведён{% endif %}</dd></div>
+    {% if money.document.note %}<div class="sm:col-span-3"><dt class="text-xs text-slate-500">Комментарий</dt><dd>{{ money.document.note }}</dd></div>{% endif %}
   </dl>
-  <h2 class="mb-2 text-base font-semibold">Движения</h2>
-  <ul class="mb-6 text-sm">{% for move in moves %}<li>{{ move.account.name }} {{ move.amount_delta|money }} {{ move.account.currency }}</li>{% endfor %}</ul>
-  {% if reversal %}
-    <p class="text-sm">Сторно: {{ reversal.number }} от {{ reversal.effective_date|date:"d.m.Y" }}.</p>
-  {% else %}
-    <form method="post" action="{% url 'money_reverse' money.pk %}" class="max-w-xl space-y-3 rounded-xl border border-slate-200 bg-white p-5">
-      {% csrf_token %}
-      <label class="block text-sm">Дата сторно<input type="date" name="effective_date" value="{{ today|date:'Y-m-d' }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
-      <label class="block text-sm">Комментарий<textarea name="note" rows="2" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"></textarea></label>
-      <button class="min-h-11 rounded-md border border-red-300 px-4 text-sm text-red-800" data-confirm="Сторнировать денежный документ?">Сторнировать</button>
-    </form>
+  {% if split %}
+    <h2 class="mb-2 text-base font-semibold">Куда ушла оплата</h2>
+    <div class="mb-6 max-w-2xl overflow-auto rounded-xl border border-slate-200 bg-white">
+      <table class="min-w-full text-sm">
+        <tbody>
+          {% for row in split.rows %}
+            <tr class="border-t border-slate-100 first:border-t-0"><td class="px-3 py-2">В долг: {% if row.url %}<a class="underline" href="{{ row.url }}">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}</td><td class="px-3 py-2 text-right tabular-nums">{{ row.amount|money }} {{ money.account.currency }}</td></tr>
+          {% endfor %}
+          <tr class="border-t border-slate-100"><td class="px-3 py-2">В аванс поставщику</td><td class="px-3 py-2 text-right tabular-nums">{{ split.advance|money }} {{ money.account.currency }}</td></tr>
+        </tbody>
+      </table>
+    </div>
   {% endif %}
+  <h2 class="mb-2 text-base font-semibold">Движения по счетам</h2>
+  <ul class="mb-6 text-sm">{% for move in moves %}<li class="tabular-nums">{{ move.account.name }}: {{ move.amount_delta|money }} {{ move.account.currency }}</li>{% endfor %}</ul>
+  {% url 'money_reverse' money.pk as cancel_url %}
+  {% include "ui/_cancel_box.html" with action=cancel_url what="документ" effect="Деньги вернутся на счёт, зачёт долга по этому документу снимется." %}
 {% endblock %}

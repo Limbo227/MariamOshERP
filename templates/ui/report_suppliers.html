@@ -4,6 +4,7 @@
 {% block breadcrumb %}Отчёты / Долги поставщикам{% endblock %}
 {% block heading %}Долги и авансы поставщикам{% endblock %}
 {% block content %}
+  {% include "ui/_report_tabs.html" %}
   <p class="mb-4 text-sm text-slate-600">Каждая валюта показана отдельно. Долг — мы должны. Аванс — поставщик должен нам.</p>
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">

@@ -4,6 +4,7 @@
 {% block breadcrumb %}Склад / Движения{% endblock %}
 {% block heading %}Движения товаров{% endblock %}
 {% block content %}
+  {% include "ui/_stock_tabs.html" %}
   <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
     <label class="text-sm">Склад
       <select name="warehouse" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
@@ -19,6 +20,7 @@
     </label>
     <label class="text-sm">С<input type="date" name="date_from" value="{{ date_from }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
     <label class="text-sm">По<input type="date" name="date_to" value="{{ date_to }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
+    {% include "ui/_cancelled_toggle.html" %}
     <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Показать</button>
   </form>
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
@@ -28,9 +30,9 @@
       </tr></thead>
       <tbody>
         {% for move in page %}
-          <tr class="border-t border-slate-100">
+          <tr class="border-t border-slate-100 {% if move.is_cancelled %}text-slate-400 line-through{% endif %}">
             <td class="px-3 py-2">{{ move.effective_date|date:"d.m.Y" }}</td>
-            <td class="px-3 py-2">{% if move.ui_url %}<a class="underline" href="{{ move.ui_url }}">{{ move.document.number }}</a>{% else %}{{ move.document.number }}{% endif %}</td>
+            <td class="px-3 py-2">{% if move.document.kind == "REVERSAL" %}Отмена {{ move.document.reverses.number }}{% elif move.ui_url %}<a class="underline" href="{{ move.ui_url }}">{{ move.document.number }}</a>{% else %}{{ move.document.number }}{% endif %}{% if move.is_cancelled %} <span class="chip bg-red-100 text-red-800 no-underline">{% if move.document.kind == "REVERSAL" %}отмена{% else %}отменён{% endif %}</span>{% endif %}</td>
             <td class="px-3 py-2">{{ move.product.name }}</td>
             <td class="px-3 py-2">{{ move.location.warehouse.name }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ move.qty_delta|qty }} {{ move.product.unit|unit }}</td>

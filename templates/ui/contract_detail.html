@@ -1,41 +1,62 @@
 {% extends "ui/shell.html" %}
 {% load ui_format %}
 {% block title %}Договор {{ contract.number }} — Мариам-Ош ERP{% endblock %}
-{% block breadcrumb %}Закупки / Договоры / {{ contract.number }}{% endblock %}
-{% block heading %}Договор {{ contract.number }}{% endblock %}
+{% block breadcrumb %}Пшеница / Договоры / {{ contract.number }}{% endblock %}
+{% block heading %}Договор {{ contract.number }}{% if not contract.active %} <span class="chip bg-slate-200 align-middle text-slate-700">Закрыт</span>{% endif %}{% endblock %}
 {% block content %}
-  <div class="mb-4 flex gap-2">
-    {% url 'contract_edit' contract.pk as edit_url %}{% url 'contract_delete' contract.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить договор? Если есть спецификации, договор будет закрыт." %}
-    <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'specification_create' contract.pk %}">Добавить спецификацию</a>
+  {% include "ui/_buying_tabs.html" %}
+  <div class="mb-4 flex flex-wrap items-center gap-2">
+    <a class="btn-primary" href="{% url 'specification_create' contract.pk %}">Добавить спецификацию</a>
+    {% url 'contract_edit' contract.pk as edit_url %}{% url 'contract_delete' contract.pk as delete_url %}{% include "ui/_actions.html" with big=1 edit=edit_url delete=delete_url confirm="Удалить договор? Если у него уже есть спецификации, удалить не получится." %}
   </div>
-  <dl class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+  <dl class="mb-4 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
     <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{{ contract.supplier.name }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Дата</dt><dd>{{ contract.contract_date|date:"d.m.Y" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Срок</dt><dd>{{ contract.contract_date|date:"d.m.Y" }} — {% if contract.end_date %}{{ contract.end_date|date:"d.m.Y" }}{% else %}бессрочно{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Валюта</dt><dd>{{ contract.currency }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Условие поставки</dt><dd>{{ contract.delivery_term|default:"—" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Оплата</dt><dd>{% if contract.prepayment_percent is not None %}Предоплата {{ contract.prepayment_percent|qty }} %{% if contract.payment_terms %}. {% endif %}{% endif %}{{ contract.payment_terms|default:"" }}{% if contract.prepayment_percent is None and not contract.payment_terms %}—{% endif %}</dd></div>
     <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if contract.active %}Действует{% else %}Закрыт{% endif %}</dd></div>
-    <div><dt class="text-xs text-slate-500">Описание</dt><dd>{{ contract.description|default:"—" }}</dd></div>
+    {% if contract.description %}<div class="sm:col-span-3"><dt class="text-xs text-slate-500">Заметка</dt><dd>{{ contract.description }}</dd></div>{% endif %}
   </dl>
+  <section class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Исполнение договора">
+    <div class="card p-4">
+      <p class="text-xs text-slate-500">Принято по договору</p>
+      <p class="mt-1 text-lg font-semibold tabular-nums">{{ total.accepted_kg|tons }}{% if contract.volume_tons %} <span class="text-sm font-normal text-slate-500">из {{ contract.volume_tons|qty }} т</span>{% endif %}</p>
+      {% if total.volume_percent is not None %}
+        <div class="mt-2 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-teal-brand" style="width: {% if total.volume_percent > 100 %}100{% else %}{{ total.volume_percent|stringformat:'s' }}{% endif %}%"></div></div>
+        <p class="mt-1 text-xs text-slate-500">{{ total.volume_percent }} %</p>
+      {% endif %}
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-slate-500">Сумма принятого</p>
+      <p class="mt-1 text-lg font-semibold tabular-nums">{{ total.accepted_amount|money }} {{ contract.currency }}</p>
+      {% if contract.amount_limit %}<p class="mt-1 text-xs {% if total.limit_left < 0 %}text-red-700{% else %}text-slate-500{% endif %}">Лимит {{ contract.amount_limit|money }}, осталось {{ total.limit_left|money }}</p>{% endif %}
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-slate-500">Оплачено / долг</p>
+      <p class="mt-1 text-lg font-semibold tabular-nums">{{ total.paid|money }} <span class="text-sm font-normal text-slate-500">/ {{ total.outstanding|money }} {{ contract.currency }}</span></p>
+    </div>
+  </section>
   <h2 class="mb-2 text-base font-semibold">Спецификации</h2>
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left text-slate-500"><tr>
-        <th class="px-3 py-2">Номер</th><th class="px-3 py-2">Товар</th><th class="px-3 py-2 text-right">План, кол-во</th><th class="px-3 py-2 text-right">План, сумма</th><th class="px-3 py-2">Валюта</th><th class="px-3 py-2 text-right">Отправлено</th><th class="px-3 py-2 text-right">Принято</th><th class="px-3 py-2 text-right">Долг по приёмке</th><th class="px-3 py-2 text-right">Оплачено</th><th class="px-3 py-2 text-right">Остаток</th><th class="px-3 py-2 text-right">Действия</th>
+        <th class="px-3 py-2">№</th><th class="px-3 py-2">Зерно</th><th class="px-3 py-2 text-right">План</th><th class="px-3 py-2 text-right">Принято</th><th class="px-3 py-2 text-right">Сумма принятого</th><th class="px-3 py-2 text-right">Оплачено</th><th class="px-3 py-2 text-right">Долг</th><th class="px-3 py-2">Состояние</th><th class="px-3 py-2 text-right">Действия</th>
       </tr></thead>
       <tbody>
         {% for spec in specs %}
           <tr class="border-t border-slate-100">
             <td class="px-3 py-2"><a class="underline" href="{% url 'purchase_detail' spec.pk %}">{{ spec.specification_number }}</a></td>
             <td class="px-3 py-2">{{ spec.fig.products|join:", " }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.planned_qty|qty }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.planned_amount|money }}</td>
-            <td class="px-3 py-2">{{ spec.currency }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.dispatched_qty|qty }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_qty|qty }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_amount|money }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.planned_qty|tons }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_qty|tons }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_amount|money }} {{ spec.currency }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.paid|money }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.outstanding|money }}</td>
-            <td class="px-3 py-2">{% url 'purchase_edit' spec.pk as edit_url %}{% url 'purchase_delete' spec.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить спецификацию? Если есть поставки или приёмки, удаление будет отклонено." %}</td>
+            <td class="px-3 py-2"><span class="chip {% if spec.operational_status == 'COMPLETED' %}bg-slate-200 text-slate-700{% else %}bg-emerald-100 text-emerald-900{% endif %}">{{ spec.get_operational_status_display }}</span></td>
+            <td class="px-3 py-2">{% url 'purchase_edit' spec.pk as edit_url %}{% url 'purchase_delete' spec.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить спецификацию? Если есть поставки или приёмки, удалить не получится." %}</td>
           </tr>
-        {% empty %}<tr><td colspan="11" class="px-3 py-8 text-center text-slate-500">Спецификаций нет.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="9" class="px-3 py-8 text-center text-slate-500">Спецификаций нет. <a class="underline" href="{% url 'specification_create' contract.pk %}">Добавить первую</a></td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

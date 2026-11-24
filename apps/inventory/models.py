@@ -47,10 +47,26 @@ class Product(models.Model):
         PCS = "PCS", "шт"
         KG = "KG", "кг"
         L = "L", "литр"
-        BAG = "BAG", "мш"
+        BAG = "BAG", "мешок"
+
+    class Kind(models.TextChoices):
+        """What the product is for. Decides which units the form offers and where it may be bought."""
+
+        GRAIN = "GRAIN", "Зерно (по договору, вагонами)"
+        RAW = "RAW", "Сырьё и материалы"
+        PACKAGING = "PACKAGING", "Тара и упаковка"
+        FINISHED = "FINISHED", "Готовая продукция"
+
+    KIND_UNITS = {
+        Kind.GRAIN: (Unit.KG,),
+        Kind.RAW: (Unit.KG, Unit.L, Unit.PCS),
+        Kind.PACKAGING: (Unit.PCS,),
+        Kind.FINISHED: (Unit.BAG, Unit.KG),
+    }
 
     sku = models.CharField("Код", max_length=40, unique=True)
     name = models.CharField("Название", max_length=160)
+    kind = models.CharField("Тип", max_length=12, choices=Kind.choices, default=Kind.RAW)
     category = models.ForeignKey(
         ProductCategory,
         null=True,
@@ -130,6 +146,19 @@ class Product(models.Model):
         self._prepare_identity()
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    @property
+    def pack_label(self):
+        """«50 кг в мешке» for sacked goods, empty otherwise."""
+        def kg(value):
+            text = f"{Decimal(value).normalize():f}"
+            return text.replace(".", ",")
+
+        if self.unit == self.Unit.BAG and self.unit_weight_kg:
+            return f"{kg(self.unit_weight_kg)} кг в мешке"
+        if self.unit == self.Unit.KG and self.package_kg:
+            return f"мешки по {kg(self.package_kg)} кг"
+        return ""
 
     def __str__(self):
         return self.name

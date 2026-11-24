@@ -91,6 +91,11 @@ def record_contract(
     active=True,
     currency=PurchaseOrder.Currency.KGS,
     delivery_term=None,
+    end_date=None,
+    volume_tons=None,
+    amount_limit=None,
+    prepayment_percent=None,
+    payment_terms="",
 ):
     require_active(supplier)
     if delivery_term is not None:
@@ -103,6 +108,11 @@ def record_contract(
         active=active,
         currency=currency,
         delivery_term=delivery_term,
+        end_date=end_date,
+        volume_tons=volume_tons,
+        amount_limit=amount_limit,
+        prepayment_percent=prepayment_percent,
+        payment_terms=payment_terms or "",
     )
 
 
@@ -216,12 +226,10 @@ def update_specification(
 
 @transaction.atomic
 def delete_specification(order, *, actor=None):
-    """Remove a contract specification that has not moved stock or debt."""
+    """Remove a specification or a contract-less order that has not moved stock or debt."""
     from apps.inventory.models import ReceiptLine
 
     order = PurchaseOrder.objects.select_for_update().select_related("document").get(pk=order.pk)
-    if not order.contract_id:
-        raise ValidationError("Удаляется спецификация по договору.")
     posted_receipt = ReceiptLine.objects.filter(
         purchase_line__order=order,
         receipt__document__state=Document.State.POSTED,
@@ -290,6 +298,7 @@ def _shipment_values(shipment):
         "departure_date": shipment.departure_date,
         "arrival_date": shipment.arrival_date,
         "station": None if station is None else station.name,
+        "destination": None if shipment.destination_station_id is None else shipment.destination_station.name,
         "currency": order.currency,
     }
 
@@ -306,6 +315,7 @@ def record_shipment(
     departure_station=None,
     wagon_count=None,
     actor=None,
+    destination_station=None,
 ):
     quantity = q_qty(quantity)
     if quantity <= 0:
@@ -319,6 +329,7 @@ def record_shipment(
     shipment = Shipment.objects.create(
         order=order,
         departure_station=station,
+        destination_station=_require_station(destination_station) if destination_station is not None else None,
         quantity=quantity,
         departure_date=departure_date,
         arrival_date=arrival_date,
@@ -351,6 +362,7 @@ def update_shipment(
     notes=None,
     departure_date=None,
     departure_station=None,
+    destination_station=None,
     quantity=None,
     wagon_count=None,
     order=None,
@@ -380,6 +392,8 @@ def update_shipment(
             )
     if departure_station is not None:
         current.departure_station = _require_station(departure_station)
+    if destination_station is not None:
+        current.destination_station = _require_station(destination_station)
     if departure_date is not None:
         current.departure_date = departure_date
     if arrival_date is not None:

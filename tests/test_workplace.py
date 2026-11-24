@@ -159,7 +159,7 @@ def test_boss_login_logout_and_live_dashboard(client, boss):
     assert "1 540" not in html
     assert "Д-1 / 8" in html
     assert "51234567" in html
-    assert "Сторнирована" in html
+    assert "Отменена" in html
     assert order.document.number in html
 
     expected_payable = {}

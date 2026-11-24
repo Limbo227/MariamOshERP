@@ -4,9 +4,9 @@
 {% block heading %}{{ party.name }}{% endblock %}
 {% block content %}
   <div class="mb-4 flex flex-wrap gap-2">
-    {% url 'party_edit' party.pk as edit_url %}{% url 'party_delete' party.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить контрагента? Если он уже в документах, запись будет отключена." %}
-    <form method="post" action="{% url 'party_toggle' party.pk %}">{% csrf_token %}<button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">{% if party.active %}Отключить{% else %}Включить{% endif %}</button></form>
-    {% if party.is_supplier %}<a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'purchase_create' %}">Новая закупка</a>{% endif %}
+    {% url 'party_edit' party.pk as edit_url %}{% url 'party_delete' party.pk as delete_url %}{% include "ui/_actions.html" with big=1 edit=edit_url delete=delete_url confirm="Удалить контрагента? Если он уже в документах, удалить не получится." %}
+    <form method="post" action="{% url 'party_toggle' party.pk %}">{% csrf_token %}<button class="btn-ghost">{% if party.active %}Отключить{% else %}Включить{% endif %}</button></form>
+    {% if party.is_supplier %}<a class="btn-primary" href="{% url 'purchase_create' %}">Новая закупка</a>{% endif %}
   </div>
   <dl class="grid max-w-3xl gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
     <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{% if party.is_supplier %}Да{% else %}Нет{% endif %}</dd></div>

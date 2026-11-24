@@ -5,23 +5,26 @@
 {% block heading %}{{ account.name }}{% endblock %}
 {% block content %}
   <div class="mb-4 flex flex-wrap gap-2">
-    {% url 'account_edit' account.pk as edit_url %}{% url 'account_delete' account.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить счёт? Если по нему есть движения, он будет отключён." %}
-    <form method="post" action="{% url 'account_toggle' account.pk %}">{% csrf_token %}<button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">{% if account.active %}Отключить{% else %}Включить{% endif %}</button></form>
+    {% url 'account_edit' account.pk as edit_url %}{% url 'account_delete' account.pk as delete_url %}{% include "ui/_actions.html" with big=1 edit=edit_url delete=delete_url confirm="Удалить счёт? Если по нему уже есть движения, удалить не получится." %}
+    <form method="post" action="{% url 'account_toggle' account.pk %}">{% csrf_token %}<button class="btn-ghost">{% if account.active %}Отключить{% else %}Включить{% endif %}</button></form>
   </div>
   <dl class="mb-6 grid max-w-3xl gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
     <div><dt class="text-xs text-slate-500">Тип</dt><dd>{{ account.get_kind_display }}</dd></div>
     <div><dt class="text-xs text-slate-500">Валюта</dt><dd>{{ account.currency }}</dd></div>
     <div><dt class="text-xs text-slate-500">Остаток</dt><dd class="text-lg font-semibold tabular-nums">{{ account.current_balance|money }} {{ account.currency }}</dd></div>
   </dl>
-  <h2 class="mb-3 text-base font-semibold">Последние движения</h2>
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <h2 class="text-base font-semibold">Последние движения</h2>
+    <form method="get">{% include "ui/_cancelled_toggle.html" %}</form>
+  </div>
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left text-slate-500"><tr><th class="px-3 py-2 font-medium">Дата</th><th class="px-3 py-2 font-medium">Документ</th><th class="px-3 py-2 text-right font-medium">Сумма</th></tr></thead>
       <tbody>
         {% for move in moves %}
-          <tr class="border-t border-slate-100">
+          <tr class="border-t border-slate-100 {% if move.is_cancelled %}text-slate-400 line-through{% endif %}">
             <td class="px-3 py-2">{{ move.effective_date|date:"d.m.Y" }}</td>
-            <td class="px-3 py-2">{{ move.document }}</td>
+            <td class="px-3 py-2">{% if move.document.kind == "REVERSAL" %}Отмена {{ move.document.reverses.number }}{% elif move.money_id %}<a class="underline" href="{% url 'money_detail' move.money_id %}">{% if move.operation %}{{ move.operation.name }}{% else %}{{ move.document.get_kind_display }}{% endif %} {{ move.document.number }}</a>{% else %}{{ move.document }}{% endif %}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ move.amount_delta|money }}</td>
           </tr>
         {% empty %}<tr><td colspan="3" class="px-3 py-8 text-center text-slate-500">Движений нет.</td></tr>{% endfor %}

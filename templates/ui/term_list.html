@@ -13,7 +13,7 @@
             <td><a class="underline" href="{% url 'term_edit' row.pk %}">{{ row.name }}</a></td>
             <td>{{ row.code }}</td>
             <td>{% if row.active %}Действует{% else %}Отключено{% endif %}</td>
-            <td>{% url 'term_edit' row.pk as edit_url %}{% url 'term_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить условие поставки? Если оно используется, запись будет отключена." %}</td>
+            <td>{% url 'term_edit' row.pk as edit_url %}{% url 'term_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить условие поставки? Если оно уже используется, удалить не получится." %}</td>
           </tr>
         {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Условий нет.</td></tr>{% endfor %}
       </tbody>

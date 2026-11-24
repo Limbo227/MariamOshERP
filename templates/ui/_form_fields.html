@@ -1,6 +1,6 @@
-{{ form.hidden_fields }}
+{% load ui_format %}{% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
 {% if form.non_field_errors %}
-  <div class="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">{{ form.non_field_errors }}</div>
+  <div class="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">{% for text in form.non_field_errors|friendly_list %}<p>{{ text }}</p>{% endfor %}</div>
 {% endif %}
 {% for field in form.visible_fields %}
   {% if field.field.widget.input_type == "checkbox" %}
@@ -8,13 +8,14 @@
       {{ field }}
       <span>{{ field.label }}</span>
     </label>
-    {% for error in field.errors %}<span class="block text-sm text-red-700">{{ error }}</span>{% endfor %}
+    {% if field.help_text %}<span class="-mt-2 block text-xs text-slate-500">{{ field.help_text }}</span>{% endif %}
+    {% for text in field.errors|friendly_list %}<span class="block text-sm text-red-700">{{ text }}</span>{% endfor %}
   {% else %}
     <label class="block text-sm">
-      <span class="font-medium">{{ field.label }}</span>
+      <span class="font-medium">{{ field.label }}{% if field.field.required and not field.field.disabled %} <span class="text-red-600" aria-hidden="true">*</span>{% endif %}</span>
       {{ field }}
       {% if field.help_text %}<span class="mt-1 block text-xs text-slate-500">{{ field.help_text }}</span>{% endif %}
-      {% for error in field.errors %}<span class="mt-1 block text-sm text-red-700">{{ error }}</span>{% endfor %}
+      {% for text in field.errors|friendly_list %}<span class="mt-1 block text-sm text-red-700">{{ text }}</span>{% endfor %}
     </label>
   {% endif %}
 {% endfor %}

@@ -14,7 +14,7 @@
             <td><a class="underline" href="{% url 'category_edit' row.pk %}">{{ row.name }}</a></td>
             <td>{{ row.code }}</td>
             <td>{% if row.active %}Действует{% else %}Отключена{% endif %}</td>
-            <td>{% url 'category_edit' row.pk as edit_url %}{% url 'category_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить категорию? Если в ней есть товары, она будет отключена." %}</td>
+            <td>{% url 'category_edit' row.pk as edit_url %}{% url 'category_delete' row.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить категорию? Если в ней уже есть товары, удалить не получится." %}</td>
           </tr>
         {% empty %}<tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">Категорий нет.</td></tr>{% endfor %}
       </tbody>

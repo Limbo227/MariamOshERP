@@ -248,10 +248,23 @@ def wheat_export(request):
             "Состояние",
         ]
     )
+    def cell(value):
+        """Numbers with a decimal comma and no trailing zeros, so Russian Excel reads them as numbers."""
+        if value is None or value == "":
+            return ""
+        if isinstance(value, (Decimal, int, float)):
+            text = f"{Decimal(value):f}"
+            if "." in text:
+                text = text.rstrip("0").rstrip(".")
+            return text.replace(".", ",")
+        return value
+
     for row in rows:
         writer.writerow(
             [
-                row["order"].supplier.name,
+                cell(value)
+                for value in (
+                    row["order"].supplier.name,
                 row["order"].contract.number,
                 row["order"].specification_number,
                 row["product"].name if row["product"] else "",
@@ -268,6 +281,7 @@ def wheat_export(request):
                 row["paid"],
                 row["outstanding"],
                 row["status_label"],
+                )
             ]
         )
     return response

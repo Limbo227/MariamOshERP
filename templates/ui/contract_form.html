@@ -1,7 +1,15 @@
 {% extends "ui/shell.html" %}
 {% block title %}Договор — Мариам-Ош ERP{% endblock %}
-{% block breadcrumb %}Закупки / Договоры{% endblock %}
+{% block breadcrumb %}Пшеница / Договоры{% endblock %}
 {% block heading %}{% if contract %}Договор {{ contract.number }}{% else %}Новый договор{% endif %}{% endblock %}
 {% block content %}
-  <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">{% csrf_token %}{% include "ui/_form_fields.html" %}<button class="min-h-11 rounded-md bg-slate-900 px-4 text-sm text-white">Сохранить</button></form>
+  {% include "ui/_buying_tabs.html" %}
+  <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+    {% csrf_token %}
+    {% include "ui/_form_fields.html" %}
+    <div class="flex gap-2">
+      <button class="btn-primary">Сохранить</button>
+      <a class="btn-ghost" href="{% if contract %}{% url 'contract_detail' contract.pk %}{% else %}{% url 'contract_list' %}{% endif %}">Отмена</a>
+    </div>
+  </form>
 {% endblock %}

@@ -19,7 +19,7 @@
             <td class="px-3 py-2">{{ contract.contract_date|date:"d.m.Y" }}</td>
             <td class="px-3 py-2 text-right">{{ contract.spec_count }}</td>
             <td class="px-3 py-2">{% if contract.active %}Действует{% else %}Закрыт{% endif %}</td>
-            <td class="px-3 py-2">{% url 'contract_edit' contract.pk as edit_url %}{% url 'contract_delete' contract.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить договор? Если есть спецификации, договор будет закрыт." %}</td>
+            <td class="px-3 py-2">{% url 'contract_edit' contract.pk as edit_url %}{% url 'contract_delete' contract.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить договор? Если у него уже есть спецификации, удалить не получится." %}</td>
           </tr>
         {% empty %}<tr><td colspan="6" class="px-3 py-8 text-center text-slate-500">Договоров нет.</td></tr>{% endfor %}
       </tbody>

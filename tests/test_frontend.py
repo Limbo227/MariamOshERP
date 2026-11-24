@@ -73,10 +73,17 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
     post_ok(
         boss_client,
         reverse("product_create"),
-        {"sku": "WHEAT", "name": "Пшеница", "category": grain.pk, "unit": "KG", "active": "on"},
+        {"sku": "WHEAT", "name": "Пшеница", "kind": "GRAIN", "category": grain.pk, "unit": "KG", "active": "on"},
+    )
+    post_ok(
+        boss_client,
+        reverse("product_create"),
+        {"sku": "PREMIX", "name": "Премикс", "kind": "RAW", "category": grain.pk, "unit": "KG", "active": "on"},
     )
     wheat = Product.objects.get(sku="WHEAT")
     sack = Product.objects.get(sku="SACK")
+    premix = Product.objects.get(sku="PREMIX")
+    assert wheat.kind == Product.Kind.GRAIN
 
     post_ok(
         boss_client,
@@ -206,7 +213,7 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
             "effective_date": DAY,
             "contract": "",
             "specification_number": "",
-            "product": wheat.pk,
+            "product": premix.pk,
             "quantity": "500",
             "price": "20",
             "currency": "KGS",
@@ -214,7 +221,7 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
             "action": "post",
         },
     )
-    kgs_order = PurchaseOrder.objects.get(contract__isnull=True, currency="KGS", lines__product=wheat)
+    kgs_order = PurchaseOrder.objects.get(contract__isnull=True, currency="KGS", lines__product=premix)
 
     for order, quantity in ((rub_order, "1000"), (kgs_order, "500")):
         preview = boss_client.post(
@@ -252,7 +259,7 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
     stock = boss_client.get(reverse("stock_list"))
     stock_html = stock.content.decode()
     assert stock.status_code == 200
-    assert "1 500" in stock_html and "кг" in stock_html
+    assert "1 000" in stock_html and "500" in stock_html and "кг" in stock_html
     finance = boss_client.get(reverse("finance_home"))
     finance_html = finance.content.decode()
     assert "20 000,00" in finance_html and "RUB" in finance_html

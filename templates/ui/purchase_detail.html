@@ -1,18 +1,18 @@
 {% extends "ui/shell.html" %}
 {% load ui_format %}
 {% block title %}{{ order.document.number }} — Мариам-Ош ERP{% endblock %}
-{% block breadcrumb %}Закупки / {{ order.document.number }}{% endblock %}
-{% block heading %}{{ order.document.number }}{% endblock %}
+{% block breadcrumb %}{% if order.contract_id %}Пшеница / Договор {{ order.contract.number }}{% else %}Закупка товаров{% endif %} / {{ order.document.number }}{% endblock %}
+{% block heading %}{% if order.contract_id %}Спецификация №{{ order.specification_number }} · договор {{ order.contract.number }}{% else %}Заказ {{ order.document.number }}{% endif %}{% if reversed %} <span class="chip bg-red-100 align-middle text-red-800">Отменена</span>{% endif %}{% endblock %}
 {% block content %}
   {% include "ui/_buying_tabs.html" %}
   <div class="mb-3 flex flex-wrap items-center gap-2">
     <a class="text-sm text-teal-800 underline" href="{{ back_url }}">Назад</a>
-    {% url 'purchase_edit' order.pk as edit_url %}{% if order.contract_id %}{% url 'purchase_delete' order.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить спецификацию? Если есть поставки или приёмки, удаление будет отклонено." %}{% else %}{% include "ui/_actions.html" with edit=edit_url %}{% endif %}
+    {% url 'purchase_edit' order.pk as edit_url %}{% url 'purchase_delete' order.pk as delete_url %}{% if order.contract_id %}{% include "ui/_actions.html" with big=1 edit=edit_url delete=delete_url confirm="Удалить спецификацию? Если есть поставки или приёмки, удалить не получится." %}{% else %}{% include "ui/_actions.html" with big=1 edit=edit_url delete=delete_url confirm="Удалить заказ? Если по нему уже была приёмка, удалить не получится." %}{% endif %}
   </div>
   <div class="mb-4 flex flex-wrap gap-2">
     {% if order.contract_id %}
       <a class="btn-primary" href="{% url 'shipment_create' %}?order={{ order.pk }}">Добавить поставку</a>
-      <span class="self-center text-xs text-slate-500">Приёмка создаётся проведением поставки, отдельной кнопки нет.</span>
+      
     {% elif not posted_shipments %}
       <a class="btn-primary" href="{% url 'receipt_create' %}?supplier={{ order.supplier_id }}&order={{ order.pk }}">Принять товар</a>
     {% endif %}
@@ -37,10 +37,10 @@
     <div><dt class="text-xs text-slate-500">Договор</dt><dd>{% if order.contract %}<a class="underline" href="{% url 'contract_detail' order.contract.pk %}">{{ order.contract.number }}</a>{% else %}Без договора{% endif %}</dd></div>
     <div><dt class="text-xs text-slate-500">Спецификация</dt><dd>{{ order.specification_number|default:"—" }}</dd></div>
     <div><dt class="text-xs text-slate-500">Условие поставки</dt><dd>{{ order.delivery_term|default:"—" }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if reversed %}Сторнирована{% else %}Проведена{% endif %}</dd></div>
-    <div><dt class="text-xs text-slate-500">План</dt><dd class="tabular-nums">{{ order.fig.planned_qty|qty }} / {{ order.fig.planned_amount|money }} {{ order.currency }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Отправлено</dt><dd class="tabular-nums">{{ order.fig.dispatched_qty|qty }}</dd></div>
-    <div><dt class="text-xs text-slate-500">Принято</dt><dd class="tabular-nums">{{ order.fig.accepted_qty|qty }}, осталось {{ order.fig.outstanding_qty|qty }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Состояние</dt><dd>{% if reversed %}Отменена{% else %}Проведена{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">План</dt><dd class="tabular-nums">{% if order.contract_id %}{{ order.fig.planned_qty|tons }}{% else %}{{ order.fig.planned_qty|qty }}{% endif %} / {{ order.fig.planned_amount|money }} {{ order.currency }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Отправлено</dt><dd class="tabular-nums">{% if order.contract_id %}{{ order.fig.dispatched_qty|tons }}{% else %}{{ order.fig.dispatched_qty|qty }}{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Принято</dt><dd class="tabular-nums">{% if order.contract_id %}{{ order.fig.accepted_qty|tons }}, осталось {{ order.fig.outstanding_qty|tons }}{% else %}{{ order.fig.accepted_qty|qty }}, осталось {{ order.fig.outstanding_qty|qty }}{% endif %}</dd></div>
     <div><dt class="text-xs text-slate-500">Принято на сумму</dt><dd class="tabular-nums">{{ order.fig.accepted_amount|money }} {{ order.currency }}</dd></div>
     <div><dt class="text-xs text-slate-500">Оплачено по закупке</dt><dd class="tabular-nums">{{ order.fig.paid|money }} {{ order.currency }}</dd></div>
     <div><dt class="text-xs text-slate-500">Остаток долга по закупке</dt><dd class="tabular-nums">{{ order.fig.outstanding|money }} {{ order.currency }}</dd></div>

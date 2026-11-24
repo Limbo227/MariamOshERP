@@ -4,6 +4,7 @@
 {% block breadcrumb %}Отчёты / Закупки{% endblock %}
 {% block heading %}Отчёт по закупкам{% endblock %}
 {% block content %}
+  {% include "ui/_report_tabs.html" %}
   <form method="get" class="mb-4 flex flex-wrap items-end gap-2">
     <label class="text-sm">Поиск<input name="q" value="{{ q }}" class="mt-1 block rounded-md border border-slate-300 px-3 py-2"></label>
     <label class="text-sm">Поставщик
@@ -18,7 +19,7 @@
         {% for value, label in currencies %}<option value="{{ value }}" {% if currency == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </label>
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="reversed" value="1"> Показать сторно</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="reversed" value="1"> Показать отменённые</label>
     <button class="min-h-11 rounded-md border border-slate-300 px-4 text-sm">Показать</button>
   </form>
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">

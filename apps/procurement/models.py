@@ -70,6 +70,11 @@ class PurchaseContract(models.Model):
         related_name="contracts",
         verbose_name="Условие поставки",
     )
+    end_date = models.DateField("Действует до", null=True, blank=True)
+    volume_tons = models.DecimalField("Общий объём, т", max_digits=14, decimal_places=3, null=True, blank=True)
+    amount_limit = models.DecimalField("Лимит суммы", max_digits=18, decimal_places=2, null=True, blank=True)
+    prepayment_percent = models.DecimalField("Предоплата, %", max_digits=5, decimal_places=2, null=True, blank=True)
+    payment_terms = models.CharField("Условия оплаты", max_length=200, blank=True)
     description = models.TextField("Описание", blank=True)
     active = models.BooleanField("Действует", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -79,6 +84,21 @@ class PurchaseContract(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["supplier", "number"], name="contract_supplier_number"),
             models.CheckConstraint(condition=Q(currency__in=["KGS", "RUB", "USD", "KZT"]), name="contract_currency"),
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=models.F("contract_date")),
+                name="contract_dates",
+            ),
+            models.CheckConstraint(
+                condition=Q(volume_tons__isnull=True) | Q(volume_tons__gt=0), name="contract_volume_positive"
+            ),
+            models.CheckConstraint(
+                condition=Q(amount_limit__isnull=True) | Q(amount_limit__gt=0), name="contract_limit_positive"
+            ),
+            models.CheckConstraint(
+                condition=Q(prepayment_percent__isnull=True)
+                | (Q(prepayment_percent__gte=0) & Q(prepayment_percent__lte=100)),
+                name="contract_prepayment_range",
+            ),
         ]
         verbose_name = "Договор закупки"
         verbose_name_plural = "Договоры закупки"
@@ -97,6 +117,10 @@ class PurchaseContract(models.Model):
             raise ValidationError("Договор оформляется на поставщика.")
         if self.currency not in Currency.values:
             raise ValidationError("Валюта договора должна быть KGS, RUB, USD или KZT.")
+        if self.end_date and self.contract_date and self.end_date < self.contract_date:
+            raise ValidationError("Дата окончания не может быть раньше даты договора.")
+        if self.prepayment_percent is not None and not (0 <= self.prepayment_percent <= 100):
+            raise ValidationError("Предоплата указывается от 0 до 100 %.")
         if self.pk:
             previous = PurchaseContract.objects.get(pk=self.pk)
             if self.specifications.exists() and (
@@ -261,6 +285,14 @@ class Shipment(models.Model):
         related_name="shipments",
         verbose_name="Станция отправления",
     )
+    destination_station = models.ForeignKey(
+        RailwayStation,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="arrivals",
+        verbose_name="Станция назначения",
+    )
     departure_date = models.DateField("Дата отправления", null=True, blank=True)
     arrival_date = models.DateField("Дата приёмки", null=True, blank=True)
     wagon_count = models.PositiveIntegerField("Число вагонов", default=1)
@@ -316,10 +348,10 @@ class Shipment(models.Model):
     def wagon_number(self):
         if not self.pk:
             return ""
-        wagons = list(self.wagons.all())
-        if len(wagons) == 1:
-            return wagons[0].wagon_number
-        return ""
+        numbers = [wagon.wagon_number for wagon in self.wagons.all() if wagon.wagon_number]
+        if len(numbers) > 3:
+            return f"{', '.join(numbers[:3])} и ещё {len(numbers) - 3}"
+        return ", ".join(numbers)
 
     def __str__(self):
         label = self.wagon_number

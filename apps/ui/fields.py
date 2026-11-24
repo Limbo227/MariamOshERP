@@ -2,11 +2,30 @@ from decimal import Decimal, InvalidOperation
 
 from django import forms
 
-INPUT = "mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+INPUT = "mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500"
+BLANK = "— выберите —"
+
+
+def _russian_blank(field):
+    from django.db.models.utils import get_blank_choice_label
+
+    default = str(get_blank_choice_label())
+    if isinstance(field, forms.ModelChoiceField):
+        if field.empty_label is not None and str(field.empty_label) in (default, "---------"):
+            field.empty_label = BLANK
+        return
+    if isinstance(field, forms.ChoiceField):
+        choices = list(field.choices)
+        if choices and choices[0][0] == "" and str(choices[0][1]) in (default, "---------"):
+            choices[0] = ("", BLANK)
+            field.choices = choices
 
 
 def style_fields(form):
-    for field in form.fields.values():
+    for name, field in form.fields.items():
+        _russian_blank(field)
+        if getattr(form, "_meta", None) is not None:
+            field.error_messages["unique"] = f"«{field.label}» с таким значением уже есть. Укажите другое."
         widget = field.widget
         if isinstance(widget, forms.HiddenInput):
             continue
@@ -14,6 +33,12 @@ def style_fields(form):
             widget.attrs["class"] = "h-4 w-4"
             continue
         widget.attrs["class"] = INPUT
+        if isinstance(field, LooseDecimalField):
+            # A text box accepts «0,23» and «1 000 000»; the field itself understands both.
+            widget.input_type = "text"
+            widget.attrs["inputmode"] = "decimal"
+            widget.attrs.pop("step", None)
+            widget.attrs["autocomplete"] = "off"
         if isinstance(widget, forms.Textarea):
             widget.attrs.setdefault("rows", 3)
         if isinstance(field, forms.DateField):
@@ -75,6 +100,8 @@ def price_field(label):
 
 
 def date_field(label, required=True):
-    field = forms.DateField(label=label, required=required)
+    from django.utils import timezone
+
+    field = forms.DateField(label=label, required=required, initial=timezone.localdate if required else None)
     field.widget = forms.DateInput()
     return field

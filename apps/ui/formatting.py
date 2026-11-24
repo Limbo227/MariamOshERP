@@ -37,8 +37,16 @@ _UNIT_LABELS = {
     "PCS": "шт",
     "KG": "кг",
     "L": "л",
-    "BAG": "мш",
+    "BAG": "меш.",
 }
+
+
+def qty_with_weight(product, quantity):
+    """«500 меш. (25 000 кг)» for sacked goods, «134 000 кг» for the rest."""
+    text = f"{format_qty(quantity)} {unit_label(product.unit)}"
+    if product.unit == Product.Unit.BAG and product.unit_weight_kg:
+        return f"{text} ({format_qty(q_qty(quantity * product.unit_weight_kg))} кг)"
+    return text
 
 
 def unit_label(code):

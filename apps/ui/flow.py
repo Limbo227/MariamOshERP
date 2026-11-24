@@ -1,4 +1,3 @@
-from datetime import date
 from decimal import Decimal
 
 from django import forms
@@ -26,13 +25,23 @@ from apps.procurement.services import (
     update_shipment,
 )
 from apps.ui.fields import LooseDecimalField, StyledForm, date_field, qty_field
-from apps.ui.formatting import format_money, format_qty
-from apps.ui.http import erp_page, error_text, pager
+from apps.ui.formatting import format_money, format_qty, unit_label
+from apps.ui.http import (
+    cancel_request,
+    erp_page,
+    error_text,
+    pager,
+    show_cancelled,
+    without_cancelled,
+)
 
 
 class ShipmentForm(StyledForm):
     order = forms.ModelChoiceField(label="Спецификация", queryset=PurchaseOrder.objects.none())
     departure_station = forms.ModelChoiceField(label="Станция отправления", queryset=RailwayStation.objects.none())
+    destination_station = forms.ModelChoiceField(
+        label="Станция назначения", queryset=RailwayStation.objects.none(), required=False
+    )
     quantity = qty_field("Вес нетто, кг")
     wagon_count = forms.IntegerField(label="Число вагонов", min_value=1, initial=1)
     departure_date = date_field("Дата отправления", required=False)
@@ -40,17 +49,29 @@ class ShipmentForm(StyledForm):
     arrival_date = date_field("Дата приёмки", required=False)
     notes = forms.CharField(label="Заметка", required=False, widget=forms.Textarea)
 
-    def __init__(self, *args, fixed_order=None, **kwargs):
+    def __init__(self, *args, fixed_order=None, current=None, **kwargs):
         super().__init__(*args, **kwargs)
         orders = PurchaseOrder.objects.select_related("document", "supplier", "contract").order_by(
             "-document__effective_date", "-pk"
         )
+        # Shipments carry wheat by contract specification; open specifications only, plus the current one.
+        open_specs = Q(contract__isnull=False, operational_status=PurchaseOrder.OperationalStatus.IN_PROGRESS)
+        orders = orders.filter(open_specs | Q(pk=current.pk)) if current is not None else orders.filter(open_specs)
         if fixed_order is not None:
+            orders = PurchaseOrder.objects.select_related("document", "supplier", "contract")
             orders = orders.filter(pk=fixed_order.pk)
             self.fields["order"].initial = fixed_order.pk
         self.fields["order"].queryset = orders
         self.fields["order"].label_from_instance = _order_label
-        self.fields["departure_station"].queryset = RailwayStation.objects.filter(active=True).order_by("name")
+        stations = RailwayStation.objects.filter(active=True).order_by("name")
+        self.fields["departure_station"].queryset = stations
+        self.fields["destination_station"].queryset = stations
+        self.fields["destination_station"].help_text = "Обычно Манас или Ош. Подставляется последняя использованная."
+        if not self.initial.get("destination_station"):
+            self.fields["destination_station"].initial = _usual_destination()
+        self.fields["wagon_number"].help_text = (
+            "Если вагон один. Для нескольких вагонов номера и вес каждого вводятся в карточке поставки."
+        )
 
 
 class ShipmentStatusForm(StyledForm):
@@ -78,33 +99,62 @@ class ReceiptForm(StyledForm):
     def __init__(self, *args, order, **kwargs):
         self.order = order
         super().__init__(*args, **kwargs)
-        lines = order.lines.select_related("product")
-        self.fields["purchase_line"].queryset = lines
+        lines = list(order.lines.select_related("product"))
+        self.fields["purchase_line"].queryset = order.lines.select_related("product")
+        self.fields["purchase_line"].label = "Товар"
         self.fields["purchase_line"].label_from_instance = (
-            lambda line: f"{line.product.name}, заказано {format_qty(line.quantity)} {line.product.get_unit_display()}"
+            lambda line: f"{line.product.name}, заказано {format_qty(line.quantity)} {unit_label(line.product.unit)}"
         )
-        self.fields["warehouse"].queryset = Warehouse.objects.filter(active=True)
+        warehouses = Warehouse.objects.filter(active=True)
+        if len(lines) == 1:
+            self.fields["purchase_line"].initial = lines[0].pk
+            category = lines[0].product.category_id
+            warehouses = warehouses.filter(Q(category__isnull=True) | Q(category_id=category))
+            self.fields["quantity"].label = f"Фактически принято, {unit_label(lines[0].product.unit)}"
+        self.fields["warehouse"].queryset = warehouses.order_by("name")
+        if warehouses.count() == 1:
+            self.fields["warehouse"].initial = warehouses.first().pk
         self.fields["location"].queryset = StorageLocation.objects.filter(active=True, warehouse__active=True).select_related(
             "warehouse"
         )
         self.fields["location"].widget = forms.HiddenInput()
-        self.fields["bags"].help_text = "Для товара в килограммах с указанной массой мешка."
+        self.fields["bags"].widget = forms.HiddenInput()
+        self.fields["effective_date"].initial = timezone.localdate()
 
     def clean(self):
         cleaned = super().clean()
         line = cleaned.get("purchase_line")
         warehouse = cleaned.get("warehouse")
         location = cleaned.get("location")
+        quantity = cleaned.get("quantity")
         if line and line.order_id != self.order.pk:
             self.add_error("purchase_line", "Строка не относится к выбранной закупке.")
         if location and warehouse and location.warehouse_id != warehouse.id:
             self.add_error("location", "Место хранения не относится к выбранному складу.")
-        counts_bags = line and line.product.unit == Product.Unit.KG and line.product.package_kg
-        if counts_bags and not cleaned.get("bags"):
-            self.add_error("bags", "Для товара с массой мешка укажите число мешков.")
-        if line and not counts_bags and line.product.unit != Product.Unit.BAG:
-            cleaned["bags"] = None
+        cleaned["bags"] = None
+        if line and quantity is not None:
+            product = line.product
+            if product.unit == Product.Unit.KG and product.package_kg:
+                bags = quantity / product.package_kg
+                if bags != bags.to_integral_value():
+                    self.add_error("quantity", f"Вес должен делиться на мешки по {format_qty(product.package_kg)} кг.")
+                else:
+                    cleaned["bags"] = int(bags)
         return cleaned
+
+
+def _usual_destination():
+    """Last destination used, otherwise a station called Манас."""
+    last = (
+        Shipment.objects.filter(destination_station__active=True)
+        .order_by("-pk")
+        .values_list("destination_station_id", flat=True)
+        .first()
+    )
+    if last:
+        return last
+    manas = RailwayStation.objects.filter(active=True, name__icontains="манас").values_list("pk", flat=True).first()
+    return manas
 
 
 def _order_label(order):
@@ -116,7 +166,7 @@ def _order_label(order):
 
 def _shipment_qs():
     return Shipment.objects.select_related(
-        "order__document", "order__supplier", "order__contract", "departure_station"
+        "order__document", "order__supplier", "order__contract", "departure_station", "destination_station"
     ).prefetch_related("wagons", "order__lines__product").order_by("-departure_date", "-pk")
 
 
@@ -195,6 +245,7 @@ def shipment_create(request):
                     arrival_date=data.get("arrival_date"),
                     notes=data.get("notes") or "",
                     departure_station=data["departure_station"],
+                    destination_station=data.get("destination_station"),
                     wagon_count=data["wagon_count"],
                     actor=request.user,
                 )
@@ -215,6 +266,7 @@ def shipment_edit(request, pk):
     initial = {
         "order": shipment.order_id,
         "departure_station": shipment.departure_station_id,
+        "destination_station": shipment.destination_station_id,
         "quantity": shipment.quantity,
         "wagon_count": shipment.wagon_count,
         "departure_date": shipment.departure_date,
@@ -222,9 +274,16 @@ def shipment_edit(request, pk):
         "arrival_date": shipment.arrival_date,
         "notes": shipment.notes,
     }
-    form = ShipmentForm(request.POST or None, initial=None if request.method == "POST" else initial)
+    form = ShipmentForm(request.POST or None, initial=initial, current=shipment.order)
     form.fields["wagon_number"].disabled = True
     form.fields["wagon_number"].help_text = "Номера вагонов меняются в карточке поставки."
+    if shipment.status == Shipment.Status.POSTED:
+        for name in ("order", "quantity", "wagon_count", "arrival_date"):
+            form.fields[name].disabled = True
+        form.fields["order"].help_text = (
+            "Поставка проведена: спецификация, вес, число вагонов и дата приёмки заблокированы. "
+            "Чтобы их изменить, нажмите в карточке «Отменить выполнение»."
+        )
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         try:
@@ -237,6 +296,7 @@ def shipment_edit(request, pk):
                 arrival_date=data.get("arrival_date"),
                 notes=data.get("notes") or "",
                 departure_station=data["departure_station"],
+                destination_station=data.get("destination_station"),
                 actor=request.user,
             )
         except ValidationError as exc:
@@ -263,6 +323,10 @@ def shipment_delete(request, pk):
 @erp_page
 def shipment_detail(request, pk):
     shipment = get_object_or_404(_shipment_qs(), pk=pk)
+    return _shipment_page(request, shipment)
+
+
+def _shipment_page(request, shipment, *, wagon_rows=None, wagon_error=""):
     order = shipment.order
     accepted = (
         ReceiptLine.objects.filter(purchase_line__order=order, receipt__document__reversal__isnull=True).aggregate(
@@ -279,6 +343,9 @@ def shipment_detail(request, pk):
     status_form = ShipmentStatusForm(shipment=shipment)
     lines = list(order.lines.all())
     line = lines[0] if lines else None
+    if wagon_rows is None:
+        wagon_rows = [{"wagon_number": w.wagon_number, "weight_kg": format_qty(w.weight_kg)} for w in shipment.wagons.all()]
+    blank = max(shipment.wagon_count - len(wagon_rows), 1 if wagon_rows else 2)
     return render(
         request,
         "ui/shipment_detail.html",
@@ -289,18 +356,25 @@ def shipment_detail(request, pk):
             "expenses": expenses,
             "status_form": status_form,
             "line": line,
-            "wagons": list(shipment.wagons.all()),
-            "blank_rows": range(4),
+            "wagons": wagon_rows,
+            "wagon_error": wagon_error,
+            "blank_rows": range(blank),
         },
+        status=400 if wagon_error else 200,
     )
 
 
 @erp_page
 @require_POST
 def shipment_wagons(request, pk):
-    shipment = get_object_or_404(Shipment, pk=pk)
+    shipment = get_object_or_404(_shipment_qs(), pk=pk)
     numbers = request.POST.getlist("wagon_number")
     weights = request.POST.getlist("weight_kg")
+    typed = [
+        {"wagon_number": number, "weight_kg": weight}
+        for number, weight in zip(numbers, weights)
+        if (number or "").strip() or str(weight or "").strip()
+    ]
     wagons = []
     weight_field = LooseDecimalField(max_digits=18, decimal_places=3, min_value=Decimal("0.001"))
     try:
@@ -317,7 +391,7 @@ def shipment_wagons(request, pk):
             actor=request.user,
         )
     except (ValidationError, forms.ValidationError) as exc:
-        messages.error(request, error_text(exc))
+        return _shipment_page(request, shipment, wagon_rows=typed, wagon_error=error_text(exc))
     else:
         if shipment.status == Shipment.Status.POSTED:
             messages.success(request, "Вагоны сохранены. Проведённый вес и долг не изменились.")
@@ -412,8 +486,22 @@ def receipt_list(request):
         qs = qs.filter(document__effective_date__gte=date_from)
     if date_to:
         qs = qs.filter(document__effective_date__lte=date_to)
+    cancelled = show_cancelled(request)
+    if not cancelled:
+        qs = without_cancelled(qs)
     page, query = pager(request, qs)
     rows = list(page.object_list)
+    cancelled_ids = set(
+        GoodsReceipt.objects.filter(pk__in=[row.pk for row in rows], document__reversal__isnull=False).values_list(
+            "pk", flat=True
+        )
+    )
+    shipment_of = dict(
+        Shipment.objects.filter(receipt_id__in=[row.pk for row in rows]).values_list("receipt_id", "pk")
+    )
+    for row in rows:
+        row.is_cancelled = row.pk in cancelled_ids
+        row.shipment_id = shipment_of.get(row.pk)
     totals = {
         row["receipt_id"]: row["total"]
         for row in ReceiptLine.objects.filter(receipt_id__in=[item.pk for item in rows])
@@ -433,6 +521,7 @@ def receipt_list(request):
             "supplier": supplier,
             "date_from": date_from,
             "date_to": date_to,
+            "cancelled": cancelled,
             "suppliers": Party.objects.filter(is_supplier=True).order_by("name"),
         },
     )
@@ -442,13 +531,17 @@ def receipt_list(request):
 def receipt_create(request):
     supplier_id = request.GET.get("supplier") or request.POST.get("supplier")
     order_id = request.GET.get("order") or request.POST.get("order")
-    suppliers = Party.objects.filter(is_supplier=True, active=True).order_by("name")
-    orders = _posted_orders()
+    suppliers = Party.objects.filter(is_supplier=True, active=True, purchases__contract__isnull=True).distinct().order_by("name")
+    # Wheat by specification is received by posting its shipment, so only ordinary orders are offered here.
+    orders = _posted_orders().filter(contract__isnull=True, document__reversal__isnull=True).prefetch_related(
+        "lines__product"
+    )
     if supplier_id:
         orders = orders.filter(supplier_id=supplier_id)
-    order = orders.filter(pk=order_id).first() if order_id else None
-    if order is None and order_id:
-        order = _posted_orders().filter(pk=order_id).first()
+    orders = list(orders[:200])
+    for row in orders:
+        row.ui_products = ", ".join(line.product.name for line in row.lines.all())
+    order = _posted_orders().filter(pk=order_id).first() if str(order_id or "").isdigit() else None
     form = None
     preview = None
     context = None
@@ -531,6 +624,7 @@ def receipt_detail(request, pk):
         reversal = receipt.document.reversal
     except ObjectDoesNotExist:
         reversal = None
+    source_shipment = Shipment.objects.filter(receipt=receipt).first()
     return render(
         request,
         "ui/receipt_detail.html",
@@ -541,6 +635,8 @@ def receipt_detail(request, pk):
             "currency": currency,
             "debts": debts,
             "reversal": reversal,
+            "source_shipment": source_shipment,
+            "today": timezone.localdate(),
         },
     )
 
@@ -549,18 +645,16 @@ def receipt_detail(request, pk):
 @require_POST
 def receipt_reverse(request, pk):
     receipt = get_object_or_404(GoodsReceipt.objects.select_related("document"), pk=pk)
-    when = request.POST.get("effective_date") or None
-    effective = timezone.localdate()
-    if when:
-        try:
-            effective = date.fromisoformat(when)
-        except ValueError:
-            messages.error(request, "Укажите дату сторно.")
-            return redirect("receipt_detail", receipt.pk)
+    if Shipment.objects.filter(receipt=receipt).exists():
+        messages.error(request, "Эта приёмка создана поставкой. Отмените выполнение поставки.")
+        return redirect("receipt_detail", receipt.pk)
+    effective, note = cancel_request(request)
+    if effective is None:
+        return redirect("receipt_detail", receipt.pk)
     try:
-        reverse_document(receipt.document, effective_date=effective, note=request.POST.get("note") or "", actor=request.user)
+        reverse_document(receipt.document, effective_date=effective, note=note, actor=request.user)
     except ValidationError as exc:
         messages.error(request, error_text(exc))
     else:
-        messages.success(request, "Приёмка сторнирована. Остаток и долг компенсированы.")
+        messages.success(request, "Приёмка отменена. Товар снят со склада, долг по ней закрыт.")
     return redirect("receipt_detail", receipt.pk)

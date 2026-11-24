@@ -5,12 +5,14 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.models import Currency, Document, Party
 from apps.core.quantities import line_amount
 from apps.finance.models import MoneyDocument, OpenItem
 from apps.finance.queries import item_remaining, party_position
+from apps.inventory.checks import ensure_whole
 from apps.inventory.models import GoodsReceipt, Product
 from apps.procurement.models import DeliveryTerm, PurchaseContract, PurchaseOrder, Shipment
 from apps.procurement.services import (
@@ -30,14 +32,27 @@ from apps.ui.fields import (
     qty_field,
 )
 from apps.ui.figures import order_figures
-from apps.ui.formatting import format_money
+from apps.ui.formatting import format_money, format_qty, unit_label
 from apps.ui.http import erp_page, error_text, pager, remember_list, stored_back
 
 
 class ContractForm(StyledModelForm):
     class Meta:
         model = PurchaseContract
-        fields = ["supplier", "number", "contract_date", "currency", "delivery_term", "description", "active"]
+        fields = [
+            "supplier",
+            "number",
+            "contract_date",
+            "end_date",
+            "currency",
+            "delivery_term",
+            "volume_tons",
+            "amount_limit",
+            "prepayment_percent",
+            "payment_terms",
+            "description",
+            "active",
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,7 +60,16 @@ class ContractForm(StyledModelForm):
         if self.instance.pk and self.instance.supplier_id:
             suppliers = Party.objects.filter(Q(pk=self.instance.supplier_id) | Q(is_supplier=True, active=True))
         self.fields["supplier"].queryset = suppliers.order_by("name")
+        self.fields["supplier"].label = "Поставщик"
         self.fields["contract_date"].label = "Дата договора"
+        if not self.instance.pk:
+            self.fields["contract_date"].initial = timezone.localdate()
+        self.fields["end_date"].help_text = "Пусто — бессрочно."
+        self.fields["volume_tons"].help_text = "Справочно: сколько тонн по договору всего."
+        self.fields["amount_limit"].help_text = "Справочно, в валюте договора."
+        self.fields["prepayment_percent"].help_text = "Например 30 — значит 30 % предоплаты."
+        self.fields["payment_terms"].help_text = "Коротко: «30 % предоплата, остаток 10 дней после поставки»."
+        self.fields["description"].label = "Заметка"
         self.fields["currency"].required = False
         self.fields["currency"].help_text = "Валюта новых спецификаций. Уже созданные спецификации не пересчитываются."
         terms = DeliveryTerm.objects.filter(active=True)
@@ -88,18 +112,32 @@ class PurchaseForm(StyledForm):
         self.fields["supplier"].queryset = Party.objects.filter(is_supplier=True, active=True).order_by("name")
         contracts = PurchaseContract.objects.filter(active=True).select_related("supplier").order_by("-contract_date")
         self.fields["contract"].queryset = contracts
-        self.fields["contract"].empty_label = "Без договора — обычная закупка"
-        self.fields["product"].queryset = Product.objects.filter(active=True).order_by("name")
-        self.fields["specification_number"].help_text = "Только для закупки по договору."
-        self.fields["bags"].help_text = "Только для муки: число мешков."
+        self.fields["contract"].empty_label = "Без договора — обычный заказ"
+        products = Product.objects.filter(active=True).order_by("name")
         self.fields["delivery_term"].queryset = DeliveryTerm.objects.filter(active=True).order_by("name")
-        self.fields["tolerance_percent"].help_text = "Справочный допуск. Не мешает провести поставку и не мешает закрыть спецификацию."
+        self.fields["tolerance_percent"].help_text = (
+            "Справочно, обычно ±10%. Перевес не блокирует поставки — оператор сам отмечает «Выполнено»."
+        )
+        # Sacks are counted by the product itself (unit «мешок»), so nobody types them twice.
+        self.fields["bags"].widget = forms.HiddenInput()
         if fixed_contract is not None:
             self.fields["contract"].initial = fixed_contract.pk
             self.fields["contract"].queryset = PurchaseContract.objects.filter(pk=fixed_contract.pk)
             self.fields["supplier"].initial = fixed_contract.supplier_id
             self.fields["supplier"].queryset = Party.objects.filter(pk=fixed_contract.supplier_id)
+            # Supplier and contract come from the contract page: show them, do not let them drift.
+            self.fields["supplier"].disabled = True
+            self.fields["contract"].disabled = True
+            self.fields["contract"].label = "Договор"
+            self.fields["specification_number"].label = "Номер спецификации"
+            self.fields["specification_number"].help_text = "Как в бумажной спецификации: 1, 2, 3…"
+            self.fields["product"].queryset = products.filter(
+                Q(kind=Product.Kind.GRAIN) | Q(purchase_lines__order__contract=fixed_contract)
+            ).distinct()
+            self.fields["product"].label = "Зерно"
+            self.fields["product"].help_text = "В списке товары с типом «Зерно»."
             self.fields["quantity"].label = "Плановый вес, кг"
+            self.fields["quantity"].help_text = "Например 1 000 000 кг = 1 000 т."
             self.fields["price"].label = "Цена за кг"
             if not self.initial.get("currency"):
                 self.fields["currency"].initial = fixed_contract.currency
@@ -107,8 +145,13 @@ class PurchaseForm(StyledForm):
             if fixed_contract.delivery_term_id and not self.initial.get("delivery_term"):
                 self.fields["delivery_term"].initial = fixed_contract.delivery_term_id
         else:
-            self.fields["tolerance_percent"].widget = forms.HiddenInput()
-            self.fields["delivery_term"].widget = forms.HiddenInput()
+            self.fields["product"].queryset = products.exclude(kind=Product.Kind.GRAIN)
+            self.fields["product"].help_text = "Зерно здесь не заказывают: оно идёт по договору и спецификации."
+            self.fields["quantity"].help_text = "В единице товара: кг, шт, л или мешки."
+            self.fields["price"].label = "Цена за единицу"
+            for name in ("contract", "specification_number", "tolerance_percent", "delivery_term"):
+                self.fields[name].widget = forms.HiddenInput()
+        self.fields["product"].label_from_instance = _product_label
 
     def clean(self):
         cleaned = super().clean()
@@ -125,12 +168,36 @@ class PurchaseForm(StyledForm):
         elif spec:
             self.add_error("specification_number", "Номер спецификации указывают только для закупки по договору.")
         product = cleaned.get("product")
-        counts_bags = product and product.unit == Product.Unit.KG and product.package_kg
-        if counts_bags and not cleaned.get("bags"):
-            self.add_error("bags", "Для товара с массой мешка укажите число мешков.")
-        if product and not counts_bags and product.unit != Product.Unit.BAG:
-            cleaned["bags"] = None
+        quantity = cleaned.get("quantity")
+        if product is not None and contract is None and product.kind == Product.Kind.GRAIN:
+            self.add_error(
+                "product",
+                "Зерно покупается по договору: откройте договор и нажмите «Добавить спецификацию».",
+            )
+        if product is not None and quantity is not None:
+            try:
+                ensure_whole(product, quantity)
+            except ValidationError as exc:
+                self.add_error("quantity", error_text(exc))
+        cleaned["bags"] = _legacy_bags(product, quantity, self)
         return cleaned
+
+
+def _product_label(product):
+    unit = unit_label(product.unit)
+    pack = f", {product.pack_label}" if product.pack_label else ""
+    return f"{product.name} ({unit}{pack})"
+
+
+def _legacy_bags(product, quantity, form):
+    """Old products counted in kg with a sack mass: the number of sacks follows from the weight."""
+    if product is None or quantity is None or not (product.unit == Product.Unit.KG and product.package_kg):
+        return None
+    bags = quantity / product.package_kg
+    if bags != bags.to_integral_value():
+        form.add_error("quantity", f"Вес должен делиться на мешки по {format_qty(product.package_kg)} кг.")
+        return None
+    return int(bags)
 
 
 def _orders():
@@ -294,6 +361,19 @@ def purchase_edit(request, pk):
         form.fields["product"].queryset = Product.objects.filter(
             Q(active=True) | Q(pk=line.product_id)
         ).order_by("name")
+    from apps.inventory.models import ReceiptLine
+
+    moved = (
+        order.shipments.filter(status=Shipment.Status.POSTED).exists()
+        or ReceiptLine.objects.filter(purchase_line__order=order, receipt__document__state=Document.State.POSTED).exists()
+    )
+    if moved:
+        for name in ("specification_number", "product", "quantity", "price", "currency", "bags"):
+            form.fields[name].disabled = True
+        form.fields["product"].help_text = (
+            "Товар, количество, цена и валюта заблокированы: по закупке уже есть проведённые поставки или приёмки. "
+            "Чтобы их изменить, сначала отмените выполнение поставок."
+        )
     if request.method == "POST" and request.POST.get("action") == "post" and form.is_valid():
         data = form.cleaned_data
         bags = data.get("bags") or None
@@ -346,10 +426,11 @@ def purchase_delete(request, pk):
     except ValidationError as exc:
         messages.error(request, error_text(exc))
         return redirect("purchase_detail", pk)
-    messages.success(request, "Спецификация удалена.")
     if contract_id:
+        messages.success(request, "Спецификация удалена.")
         return redirect("contract_detail", contract_id)
-    return redirect("specification_list")
+    messages.success(request, "Заказ удалён.")
+    return redirect("materials_monitor")
 
 
 @erp_page
@@ -419,6 +500,11 @@ def contract_create(request):
                 active=data.get("active", True),
                 currency=data.get("currency") or Currency.KGS,
                 delivery_term=data.get("delivery_term"),
+                end_date=data.get("end_date"),
+                volume_tons=data.get("volume_tons"),
+                amount_limit=data.get("amount_limit"),
+                prepayment_percent=data.get("prepayment_percent"),
+                payment_terms=data.get("payment_terms") or "",
             )
         except ValidationError as exc:
             form.add_error(None, error_text(exc))
@@ -449,11 +535,29 @@ def contract_detail(request, pk):
         PurchaseContract.objects.select_related("supplier", "delivery_term"),
         pk=pk,
     )
-    specs = _attach_figures(contract.specifications.select_related("document", "supplier", "contract"))
+    specs = _attach_figures(
+        contract.specifications.select_related("document", "supplier", "contract").order_by("specification_number")
+    )
+    total = {
+        "planned_kg": sum((spec.fig["planned_qty"] or 0 for spec in specs), Decimal("0")),
+        "accepted_kg": sum((spec.fig["accepted_qty"] or 0 for spec in specs), Decimal("0")),
+        "accepted_amount": sum((spec.fig["accepted_amount"] or 0 for spec in specs), Decimal("0")),
+        "paid": sum((spec.fig["paid"] or 0 for spec in specs), Decimal("0")),
+        "outstanding": sum((spec.fig["outstanding"] or 0 for spec in specs), Decimal("0")),
+    }
+    if contract.volume_tons:
+        total["volume_percent"] = round(total["accepted_kg"] / (contract.volume_tons * 1000) * 100, 1)
+    if contract.amount_limit:
+        total["limit_left"] = contract.amount_limit - total["accepted_amount"]
     return render(
         request,
         "ui/contract_detail.html",
-        {"contract": contract, "specs": specs, "back_url": stored_back(request, "contracts", "/contracts/")},
+        {
+            "contract": contract,
+            "specs": specs,
+            "total": total,
+            "back_url": stored_back(request, "contracts", "/contracts/"),
+        },
     )
 
 

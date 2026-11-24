@@ -1,7 +1,10 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -9,6 +12,7 @@ from apps.core.models import Party
 from apps.core.quantities import q_rate
 from apps.core.services import reverse_document
 from apps.finance.models import (
+    Allocation,
     CashOperation,
     ExpenseCategory,
     MoneyAccount,
@@ -20,11 +24,19 @@ from apps.finance.services import record_money, record_shipment_expense
 from apps.procurement.models import PurchaseOrder, Shipment
 from apps.ui.fields import StyledForm, date_field, money_field
 from apps.ui.formatting import format_rate
-from apps.ui.http import erp_page, error_text
+from apps.ui.http import cancel_request, erp_page, error_text, show_cancelled, without_cancelled
 
 
 def _account_label(account):
     return f"{account.name} — {account.currency}"
+
+
+def _shipment_label(shipment):
+    spec = ""
+    if shipment.order.contract_id:
+        spec = f" ({shipment.order.contract.number} / {shipment.order.specification_number})"
+    wagons = shipment.wagon_number
+    return f"Поставка {shipment.pk}{spec}" + (f" — ваг. {wagons}" if wagons else "")
 
 
 def _transfer_label(account):
@@ -141,9 +153,8 @@ class ShipmentExpenseForm(StyledForm):
             "-pk"
         )
         self.fields["shipment"].empty_label = "На всю спецификацию"
-        self.fields["shipment"].label_from_instance = lambda shipment: (
-            shipment.wagon_number or f"Поставка {shipment.pk}"
-        )
+        self.fields["shipment"].queryset = self.fields["shipment"].queryset.prefetch_related("wagons")
+        self.fields["shipment"].label_from_instance = _shipment_label
 
     def clean(self):
         cleaned = super().clean()
@@ -173,8 +184,12 @@ class ExpenseForm(StyledForm):
         )
         self.fields["order"].label_from_instance = lambda order: f"{order.document.number} — {order.supplier.name}"
         self.fields["order"].empty_label = "Без закупки"
-        self.fields["shipment"].queryset = Shipment.objects.select_related("order__document").order_by("-departure_date")
-        self.fields["shipment"].label_from_instance = lambda shipment: shipment.wagon_number or f"Отгрузка {shipment.pk}"
+        self.fields["shipment"].queryset = (
+            Shipment.objects.select_related("order__document", "order__contract")
+            .prefetch_related("wagons")
+            .order_by("-departure_date")
+        )
+        self.fields["shipment"].label_from_instance = _shipment_label
         self.fields["shipment"].empty_label = "Без вагона"
 
 
@@ -232,19 +247,31 @@ def finance_home(request):
     ).order_by("-document__effective_date", "-pk")
     effect = request.GET.get("effect", "")
     account_id = request.GET.get("account", "")
+    cancelled = show_cancelled(request)
     if effect:
         recent = recent.filter(operation__effect=effect)
     if account_id:
         recent = recent.filter(account_id=account_id)
+    if not cancelled:
+        recent = without_cancelled(recent)
+    rows = list(recent[:40])
+    cancelled_ids = set(
+        MoneyDocument.objects.filter(pk__in=[row.pk for row in rows], document__reversal__isnull=False).values_list(
+            "pk", flat=True
+        )
+    )
+    for row in rows:
+        row.is_cancelled = row.pk in cancelled_ids
     return render(
         request,
         "ui/finance_home.html",
         {
             "accounts": accounts,
             "balances": supplier_balances(),
-            "recent": recent[:40],
+            "recent": rows,
             "effect": effect,
             "account": account_id,
+            "cancelled": cancelled,
             "effects": CashOperation.Effect.choices,
         },
     )
@@ -282,7 +309,13 @@ def customer_receipt_create(request):
 
 @erp_page
 def shipment_expense_create(request):
-    form = ShipmentExpenseForm(request.POST or None)
+    initial = {}
+    shipment_id = request.GET.get("shipment", "")
+    if shipment_id.isdigit():
+        shipment = Shipment.objects.filter(pk=shipment_id).first()
+        if shipment:
+            initial = {"shipment": shipment.pk, "order": shipment.order_id}
+    form = ShipmentExpenseForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         try:
@@ -340,6 +373,9 @@ def payment_create(request):
             return redirect("money_detail", money.pk)
         supplier = form.cleaned_data.get("supplier") if form.is_valid() else supplier
         account = form.cleaned_data.get("account") if form.is_valid() else account
+    if request.method == "POST":
+        for row in debts:
+            row["value"] = request.POST.get(f"alloc-{row['item'].pk}", "")
     return render(
         request,
         "ui/payment_form.html",
@@ -463,7 +499,15 @@ def expense_create(request):
 def money_detail(request, pk):
     money = get_object_or_404(
         MoneyDocument.objects.select_related(
-            "document", "operation", "account", "counter_account", "party", "order__document", "shipment"
+            "document",
+            "operation",
+            "account",
+            "counter_account",
+            "party",
+            "order__document",
+            "order__contract",
+            "shipment",
+            "expense_category",
         ),
         pk=pk,
     )
@@ -475,32 +519,58 @@ def money_detail(request, pk):
     return render(
         request,
         "ui/money_detail.html",
-        {"money": money, "reversal": reversal, "moves": moves, "today": timezone.localdate()},
+        {
+            "money": money,
+            "reversal": reversal,
+            "moves": moves,
+            "split": _payment_split(money),
+            "today": timezone.localdate(),
+        },
     )
+
+
+def _payment_split(money):
+    """For a supplier payment: how much closed which debt and how much stayed as an advance."""
+    if money.operation.effect != CashOperation.Effect.PAY_PARTY:
+        return None
+    rows = []
+    used = Decimal("0")
+    allocations = (
+        Allocation.objects.filter(document=money.document, reversal_of__isnull=True)
+        .select_related("we_owe__order__document", "we_owe__order__contract", "we_owe__document")
+        .order_by("pk")
+    )
+    for allocation in allocations:
+        debt = allocation.we_owe
+        order = debt.order
+        if order and order.specification_number:
+            label = f"{order.contract.number} / спец. {order.specification_number}"
+        elif order:
+            label = order.document.number
+        else:
+            label = debt.memo or debt.document.number
+        rows.append(
+            {
+                "label": label,
+                "amount": allocation.amount,
+                "url": reverse("purchase_detail", args=[order.pk]) if order else "",
+            }
+        )
+        used += allocation.amount
+    return {"rows": rows, "advance": money.amount - used}
 
 
 @erp_page
 @require_POST
 def money_reverse(request, pk):
     money = get_object_or_404(MoneyDocument.objects.select_related("document"), pk=pk)
-    when = request.POST.get("effective_date") or None
-    effective = timezone.localdate()
-    if when:
-        try:
-            effective = date_from(when)
-        except ValueError:
-            messages.error(request, "Укажите дату сторно.")
-            return redirect("money_detail", money.pk)
+    effective, note = cancel_request(request)
+    if effective is None:
+        return redirect("money_detail", money.pk)
     try:
-        reverse_document(money.document, effective_date=effective, note=request.POST.get("note") or "", actor=request.user)
+        reverse_document(money.document, effective_date=effective, note=note, actor=request.user)
     except ValidationError as exc:
         messages.error(request, error_text(exc))
     else:
-        messages.success(request, "Денежный документ сторнирован.")
+        messages.success(request, "Документ отменён. Деньги и зачёт долга возвращены как было.")
     return redirect("money_detail", money.pk)
-
-
-def date_from(value):
-    from datetime import date
-
-    return date.fromisoformat(value)

@@ -45,12 +45,24 @@
         {% for row in accounts %}<option value="{{ row.pk }}" {% if account == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
       </select>
     </label>
+    {% include "ui/_cancelled_toggle.html" %}
     <button class="btn-ghost">Показать</button>
   </form>
   <h2 class="mb-2 text-base font-semibold">Денежные документы</h2>
-  <ul class="space-y-1 text-sm">
-    {% for money in recent %}
-      <li><a class="underline" href="{% url 'money_detail' money.pk %}">{{ money.operation.name }} {{ money.document.number }}</a> — {{ money.amount|money }} {{ money.account.currency }}</li>
-    {% empty %}<li class="text-slate-500">Документов нет.</li>{% endfor %}
-  </ul>
+  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-slate-500"><tr><th class="px-3 py-2">Дата</th><th class="px-3 py-2">Документ</th><th class="px-3 py-2">Контрагент / статья</th><th class="px-3 py-2">Счёт</th><th class="px-3 py-2 text-right">Сумма</th></tr></thead>
+      <tbody>
+        {% for money in recent %}
+          <tr class="border-t border-slate-100 {% if money.is_cancelled %}text-slate-400{% endif %}">
+            <td class="px-3 py-2">{{ money.document.effective_date|date:"d.m.Y" }}</td>
+            <td class="px-3 py-2"><a class="underline {% if money.is_cancelled %}line-through{% endif %}" href="{% url 'money_detail' money.pk %}">{{ money.operation.name }} {{ money.document.number }}</a>{% if money.is_cancelled %} <span class="chip bg-red-100 text-red-800">Отменён</span>{% endif %}</td>
+            <td class="px-3 py-2">{% if money.party %}{{ money.party.name }}{% elif money.expense_category %}{{ money.expense_category.name }}{% elif money.counter_account %}→ {{ money.counter_account.name }}{% else %}—{% endif %}</td>
+            <td class="px-3 py-2">{{ money.account.name }}</td>
+            <td class="px-3 py-2 text-right tabular-nums {% if money.is_cancelled %}line-through{% endif %}">{{ money.amount|money }} {{ money.account.currency }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5" class="px-3 py-8 text-center text-slate-500">Документов нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% endblock %}
