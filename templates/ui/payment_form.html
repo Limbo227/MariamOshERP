@@ -5,27 +5,27 @@
 {% block heading %}Оплата поставщику{% endblock %}
 {% block content %}
   {% include "ui/_finance_tabs.html" %}
-  <p class="mb-4 max-w-3xl text-sm text-slate-600">Выберите поставщика и счёт — ниже появятся открытые долги. Часть, которую не распределили на долг, станет авансом.</p>
-  <form method="post" id="payment-form" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">После выбора поставщика ниже только его спецификации и заказы с незакрытым долгом. Сумма в поле закрывает этот номер. Что не вписали, останется авансом.</p>
+  <form method="post" id="payment-form" class="max-w-2xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     {% csrf_token %}
     {% include "ui/_form_fields.html" %}
     {% if debts %}
       <fieldset class="space-y-2 rounded-md border border-slate-200 p-3">
         <legend class="px-1 text-sm font-medium">Зачесть в долг</legend>
         {% for row in debts %}
-          <label class="block text-sm">{{ row.label }} — остаток {{ row.left|money }} {{ row.item.currency }}
+          <label class="block text-sm">{{ row.label }} — долг {{ row.left|money }} {{ row.currency }}
             <span class="mt-1 flex gap-2">
-              <input name="alloc-{{ row.item.pk }}" inputmode="decimal" class="w-full rounded-md border border-slate-300 px-3 py-2" placeholder="Сумма зачёта" value="{{ row.value|default:'' }}">
+              <input name="alloc-order-{{ row.order.pk }}" inputmode="decimal" class="w-full rounded-md border border-slate-300 px-3 py-2" placeholder="Сколько закрыть" value="{{ row.value|default:'' }}">
               <button type="button" class="btn-ghost whitespace-nowrap" data-fill="{{ row.left }}">Весь остаток</button>
             </span>
           </label>
         {% endfor %}
         <p class="text-sm text-slate-600" id="advance-note"></p>
       </fieldset>
-    {% elif supplier and account %}
-      <p class="text-sm text-slate-500">Открытого долга в валюте счёта нет. Вся оплата останется авансом.</p>
+    {% elif supplier %}
+      <p class="text-sm text-slate-500">{% if account %}В валюте этого счёта у поставщика нет открытого долга. Вся оплата останется авансом.{% else %}У этого поставщика нет открытого долга. Оплата останется авансом.{% endif %}</p>
     {% else %}
-      <p class="text-sm text-slate-500">Долги появятся после выбора поставщика и счёта.</p>
+      <p class="text-sm text-slate-500">Выберите поставщика — появятся его спецификации и заказы с долгом.</p>
     {% endif %}
     <button name="action" value="post" class="btn-primary" data-confirm="Провести оплату поставщику?">Провести оплату</button>
   </form>
@@ -37,9 +37,11 @@
         if (!select) return;
         select.addEventListener("change", function () {
           var s = form.querySelector("[name=supplier]").value, a = form.querySelector("[name=account]").value;
-          if (!s || !a) return;
+          if (!s) return;
           form.dataset.clean = "1";
-          location.search = "?supplier=" + encodeURIComponent(s) + "&account=" + encodeURIComponent(a);
+          var query = "?supplier=" + encodeURIComponent(s);
+          if (a) query += "&account=" + encodeURIComponent(a);
+          location.search = query;
         });
       });
       function num(text) { return parseFloat(String(text || "").replace(/\s/g, "").replace(",", ".")) || 0; }

@@ -31,7 +31,7 @@ from apps.ui.fields import (
     price_field,
     qty_field,
 )
-from apps.ui.figures import order_figures
+from apps.ui.figures import fill_percent, order_figures
 from apps.ui.formatting import format_money, format_qty, unit_label
 from apps.ui.http import erp_page, error_text, pager, remember_list, stored_back
 
@@ -437,6 +437,7 @@ def purchase_delete(request, pk):
 def purchase_detail(request, pk):
     order = get_object_or_404(_orders(), pk=pk)
     order.fig = order_figures([order.pk])[order.pk]
+    order.ui_percent = fill_percent(order.fig["planned_qty"], order.fig["accepted_qty"])
     lines = order.lines.select_related("product")
     shipments = order.shipments.all()
     receipts = (
@@ -536,7 +537,9 @@ def contract_detail(request, pk):
         pk=pk,
     )
     specs = _attach_figures(
-        contract.specifications.select_related("document", "supplier", "contract").order_by("specification_number")
+        contract.specifications.select_related("document", "supplier", "contract")
+        .prefetch_related("lines")
+        .order_by("specification_number")
     )
     total = {
         "planned_kg": sum((spec.fig["planned_qty"] or 0 for spec in specs), Decimal("0")),
@@ -573,7 +576,7 @@ def contract_delete(request, pk):
 @erp_page
 def specification_list(request):
     remember_list(request, "specs")
-    qs = _orders().filter(contract__isnull=False)
+    qs = _orders().filter(contract__isnull=False).prefetch_related("lines")
     q = request.GET.get("q", "").strip()
     status = request.GET.get("status", "")
     if q:
@@ -585,7 +588,10 @@ def specification_list(request):
     if status in PurchaseOrder.OperationalStatus.values:
         qs = qs.filter(operational_status=status)
     page, query = pager(request, qs)
-    page.object_list = _attach_figures(page.object_list)
+    rows = _with_percent(_attach_figures(page.object_list))
+    for order in rows:
+        order.ui_lines = list(order.lines.all())
+    page.object_list = rows
     return render(
         request,
         "ui/specification_list.html",
@@ -599,18 +605,44 @@ def specification_list(request):
     )
 
 
+def _with_percent(orders):
+    for order in orders:
+        order.ui_percent = fill_percent(order.fig["planned_qty"], order.fig["accepted_qty"])
+    return orders
+
+
+@erp_page
+def specification_start(request):
+    """Pick an active contract, then open the existing specification form."""
+    contracts = PurchaseContract.objects.filter(active=True).select_related("supplier").order_by("-contract_date", "-pk")
+    if request.method == "POST":
+        contract = get_object_or_404(contracts, pk=request.POST.get("contract") or 0)
+        return redirect("specification_create", contract.pk)
+    return render(request, "ui/specification_start.html", {"contracts": contracts})
+
+
 @erp_page
 @require_POST
 def specification_status(request, pk):
     order = get_object_or_404(PurchaseOrder, pk=pk)
     action = request.POST.get("action") or ""
+    noun = "Спецификация" if order.contract_id else "Заказ"
     try:
         if action == "complete":
             complete_specification(order, actor=request.user)
-            messages.success(request, "Спецификация отмечена выполненной. Склад и долг не изменились.")
+            if order.contract_id:
+                messages.success(
+                    request,
+                    "Спецификация отмечена выполненной. Новую поставку добавить нельзя. Склад и долг не изменились.",
+                )
+            else:
+                messages.success(
+                    request,
+                    "Заказ отмечен выполненным. Новую приёмку провести нельзя. Склад и долг не изменились.",
+                )
         elif action == "reopen":
             reopen_specification(order, actor=request.user)
-            messages.success(request, "Спецификация снова в работе.")
+            messages.success(request, f"{noun} снова в работе.")
         else:
             messages.error(request, "Укажите выполнение или возврат в работу.")
     except ValidationError as exc:

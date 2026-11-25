@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import Sum
 
@@ -8,6 +8,13 @@ from apps.finance.models import OpenItem
 from apps.finance.queries import item_remaining, money_balance
 from apps.inventory.models import ReceiptLine
 from apps.procurement.models import PurchaseLine, Shipment
+
+
+def fill_percent(planned, accepted):
+    """Share of the ordered quantity already received, one decimal. None when there is no plan."""
+    if not planned:
+        return None
+    return (Decimal(accepted) / Decimal(planned) * Decimal("100")).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
 
 def order_figures(order_ids):

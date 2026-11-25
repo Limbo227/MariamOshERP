@@ -25,14 +25,21 @@
     {% if context %}
       <dl class="mb-4 grid max-w-3xl gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm sm:grid-cols-3">
         <div><dt class="text-xs text-slate-500">Заказано</dt><dd class="tabular-nums">{{ context.ordered|qty }} {{ context.unit }}</dd></div>
-        <div><div><dt class="text-xs text-slate-500">Уже принято по строке</dt><dd class="tabular-nums">{{ context.accepted|qty }} {{ context.unit }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Уже принято по строке</dt><dd class="tabular-nums">{{ context.accepted|qty }} {{ context.unit }}</dd></div>
       </dl>
+      {% if not form.over_note and context.ordered and context.accepted >= context.ordered %}
+        <p class="mb-4 max-w-xl rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Уже принято {{ context.accepted|qty }} из {{ context.ordered|qty }} {{ context.unit }}. Следующая приёмка будет больше заказа. Провести можно, пока заказ в работе.</p>
+      {% endif %}
     {% endif %}
     <form method="post" class="max-w-xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
       {% csrf_token %}
       <input type="hidden" name="supplier" value="{{ supplier_id }}">
       <input type="hidden" name="order" value="{{ order.pk }}">
       {% include "ui/_form_fields.html" %}
+      {% if form.over_note %}
+        <p class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{{ form.over_note }}</p>
+        <input type="hidden" name="confirm_over" value="1">
+      {% endif %}
       {% if preview %}<p class="rounded-md bg-slate-50 px-3 py-2 text-sm">{{ preview }}</p>{% endif %}
       <div class="flex flex-wrap gap-2">
         <button name="action" value="preview" class="btn-ghost">Показать сумму долга</button>

@@ -105,11 +105,7 @@
                   <td class="text-right tabular-nums">{{ row.paid|money }}</td>
                   <td class="text-right font-medium tabular-nums">{{ row.outstanding|money }}</td>
                   <td>
-                    {% if row.status == "COMPLETED" %}
-                      <span class="chip bg-slate-200 text-slate-700">{{ row.status_label }}</span>
-                    {% else %}
-                      <span class="chip bg-emerald-100 text-emerald-900">{{ row.status_label }}</span>
-                    {% endif %}
+                    {% include "ui/_state_chip.html" with status=row.status label=row.status_label %}
                     {% if row.warning %}<span class="mt-1 block text-xs text-amber-700">{{ row.warning }}</span>{% endif %}
                   </td>
                 </tr>

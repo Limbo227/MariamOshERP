@@ -38,6 +38,7 @@ urlpatterns = [
     path("purchases/wheat/", monitor.wheat_summary, name="wheat_summary"),
     path("purchases/wheat/export/", monitor.wheat_export, name="wheat_export"),
     path("purchases/specifications/", buying.specification_list, name="specification_list"),
+    path("purchases/specifications/new/", buying.specification_start, name="specification_start"),
     path("purchases/materials/", monitor.materials_monitor, name="materials_monitor"),
     path("purchases/", buying.purchase_list, name="purchase_list"),
     path("purchases/new/", buying.purchase_create, name="purchase_create"),

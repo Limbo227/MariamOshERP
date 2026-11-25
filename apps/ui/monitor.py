@@ -17,7 +17,7 @@ from apps.core.quantities import line_amount
 from apps.inventory.models import Product, ProductCategory
 from apps.procurement.models import PurchaseContract, PurchaseOrder, RailwayStation, Shipment
 from apps.procurement.reports import shipment_purchase_amount, specification_progress
-from apps.ui.figures import order_figures
+from apps.ui.figures import fill_percent, order_figures
 from apps.ui.http import erp_page, pager, remember_list
 
 TONNE = Decimal("1000")
@@ -198,7 +198,7 @@ def _context(request, rows, page=None, query=""):
         "sort": request.GET.get("sort", "supplier"),
         "suppliers": Party.objects.filter(is_supplier=True).order_by("name"),
         "contracts": PurchaseContract.objects.select_related("supplier").order_by("number"),
-        "products": Product.objects.order_by("name"),
+        "products": Product.objects.filter(kind=Product.Kind.GRAIN, active=True).order_by("name"),
         "stations": RailwayStation.objects.filter(active=True).order_by("name"),
         "statuses": PurchaseOrder.OperationalStatus.choices,
     }
@@ -301,18 +301,22 @@ def materials_monitor(request):
     q = request.GET.get("q", "").strip()
     supplier = request.GET.get("supplier", "")
     category = request.GET.get("category", "")
+    status = request.GET.get("status", "")
     if q:
         qs = qs.filter(Q(document__number__icontains=q) | Q(supplier__name__icontains=q) | Q(lines__product__name__icontains=q))
     if supplier:
         qs = qs.filter(supplier_id=supplier)
     if category.isdigit():
         qs = qs.filter(lines__product__category_id=int(category))
+    if status in PurchaseOrder.OperationalStatus.values:
+        qs = qs.filter(operational_status=status)
     page, query = pager(request, qs.distinct())
     orders = list(page.object_list)
     figures = order_figures([order.pk for order in orders])
     for order in orders:
         order.fig = figures[order.pk]
         order.ui_lines = list(order.lines.all())
+        order.ui_percent = fill_percent(order.fig["planned_qty"], order.fig["accepted_qty"])
     page.object_list = orders
     return render(
         request,
@@ -323,6 +327,8 @@ def materials_monitor(request):
             "q": q,
             "supplier": supplier,
             "category": category,
+            "status": status,
+            "statuses": PurchaseOrder.OperationalStatus.choices,
             "suppliers": Party.objects.filter(is_supplier=True).order_by("name"),
             "categories": ProductCategory.objects.order_by("name"),
         },

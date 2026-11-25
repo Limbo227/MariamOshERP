@@ -1,0 +1,24 @@
+{% extends "ui/shell.html" %}
+{% block title %}Новая спецификация — Мариам-Ош ERP{% endblock %}
+{% block breadcrumb %}Пшеница / Спецификации{% endblock %}
+{% block heading %}Новая спецификация{% endblock %}
+{% block content %}
+  {% include "ui/_buying_tabs.html" %}
+  <p class="mb-4 max-w-xl text-sm text-slate-600">Спецификация создаётся внутри действующего договора. Закрытый договор в список не входит.</p>
+  {% if contracts %}
+    <form method="post" class="card max-w-xl space-y-4 p-5">
+      {% csrf_token %}
+      <label class="block text-sm">Договор
+        <select name="contract" required class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+          <option value="">— выберите —</option>
+          {% for contract in contracts %}
+            <option value="{{ contract.pk }}">{{ contract.number }} — {{ contract.supplier.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn-primary">Дальше</button>
+    </form>
+  {% else %}
+    <p class="card max-w-xl px-4 py-6 text-sm text-slate-600">Нет действующего договора. <a class="underline" href="{% url 'contract_create' %}">Сначала создайте договор</a>.</p>
+  {% endif %}
+{% endblock %}

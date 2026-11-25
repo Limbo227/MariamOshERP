@@ -1,0 +1,13 @@
+<details class="inline-block text-left">
+  <summary class="inline-flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-md text-lg leading-none text-slate-500 hover:bg-slate-100" aria-label="Действия" style="list-style: none">⋯</summary>
+  <div class="mt-1 flex min-w-28 flex-col items-stretch text-left">
+    {% if open %}<a class="rounded px-2 py-1 text-slate-800 no-underline hover:bg-slate-50" href="{{ open }}">Открыть</a>{% endif %}
+    {% if edit %}<a class="rounded px-2 py-1 text-slate-800 no-underline hover:bg-slate-50" href="{{ edit }}">Изменить</a>{% endif %}
+    {% if delete %}
+      <form method="post" action="{{ delete }}">
+        {% csrf_token %}
+        <button class="w-full rounded px-2 py-1 text-left text-red-700 hover:bg-red-50" data-confirm="{{ confirm|default:'Удалить запись?' }}">Удалить</button>
+      </form>
+    {% endif %}
+  </div>
+</details>

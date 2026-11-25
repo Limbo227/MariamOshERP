@@ -201,41 +201,58 @@ def _balances():
     return rows
 
 
-def _open_debts(supplier, currency):
-    debts = []
+def _debt_label(order):
+    number = order.document.number
+    if order.contract_id and order.specification_number:
+        return f"№{order.specification_number} · {order.contract.number} · {number}"
+    return number
+
+
+def _open_debts(supplier, currency=None):
+    """One row per this supplier's specification or purchase that still has debt."""
     items = OpenItem.objects.filter(
         party=supplier,
         side=OpenItem.Side.WE_OWE,
         lane=OpenItem.Lane.PAYABLE,
-        currency=currency,
+        order__isnull=False,
         document__reversal__isnull=True,
     ).select_related("order__document", "order__contract")
+    if currency:
+        items = items.filter(currency=currency)
+    grouped = {}
     for item in items:
         left = item_remaining(item)
         if left <= 0:
             continue
-        if item.order_id and item.order.specification_number:
-            label = f"{item.order.document.number}, спецификация {item.order.specification_number}"
-        elif item.order_id:
-            label = item.order.document.number
-        else:
-            label = item.memo or item.document.number
-        debts.append({"item": item, "left": left, "label": label})
-    return debts
+        row = grouped.get(item.order_id)
+        if row is None:
+            order = item.order
+            row = {"order": order, "left": Decimal("0"), "currency": item.currency, "label": _debt_label(order)}
+            grouped[item.order_id] = row
+        row["left"] += left
+    return sorted(
+        grouped.values(),
+        key=lambda row: (
+            row["order"].contract.number if row["order"].contract_id else "",
+            row["order"].specification_number,
+            row["order"].document.number,
+        ),
+    )
 
 
 def _allocations(post, debts):
     chosen = []
-    known = {row["item"].pk: row["item"] for row in debts}
+    orders = {row["order"].pk: row["order"] for row in debts}
     for key, raw in post.items():
-        if not key.startswith("alloc-") or not str(raw).strip():
+        if not key.startswith("alloc-order-") or not str(raw).strip():
             continue
-        item = known.get(int(key.split("-", 1)[1])) if key.split("-", 1)[1].isdigit() else None
-        if item is None:
+        tail = key.rsplit("-", 1)[-1]
+        order = orders.get(int(tail)) if tail.isdigit() else None
+        if order is None:
             continue
         amount = money_field("Сумма").clean(raw)
         if amount > 0:
-            chosen.append({"item": item, "amount": amount})
+            chosen.append({"order": order, "amount": amount})
     return chosen
 
 
@@ -343,7 +360,7 @@ def payment_create(request):
     account_id = request.GET.get("account") or request.POST.get("account")
     supplier = Party.objects.filter(pk=supplier_id, is_supplier=True).first() if supplier_id else None
     account = MoneyAccount.objects.filter(pk=account_id).first() if account_id else None
-    debts = _open_debts(supplier, account.currency) if supplier and account else []
+    debts = _open_debts(supplier, account.currency if account else None) if supplier else []
     form = PaymentForm(request.POST or None)
     if request.method == "GET":
         form = PaymentForm(initial={"supplier": supplier_id, "account": account_id})
@@ -375,7 +392,7 @@ def payment_create(request):
         account = form.cleaned_data.get("account") if form.is_valid() else account
     if request.method == "POST":
         for row in debts:
-            row["value"] = request.POST.get(f"alloc-{row['item'].pk}", "")
+            row["value"] = request.POST.get(f"alloc-order-{row['order'].pk}", "")
     return render(
         request,
         "ui/payment_form.html",

@@ -8,7 +8,7 @@
 <nav class="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Пшеница">
   <a class="{% tab_class request 'wheat_summary' %}" href="{% url 'wheat_summary' %}">Свод</a>
   <a class="{% tab_class request 'contract_list' 'contract_detail' 'contract_create' 'contract_edit' %}" href="{% url 'contract_list' %}">Договоры</a>
-  <a class="{% tab_class request 'specification_list' 'specification_create' 'purchase_detail' 'purchase_edit' %}" href="{% url 'specification_list' %}">Спецификации</a>
+  <a class="{% tab_class request 'specification_list' 'specification_start' 'specification_create' 'purchase_detail' 'purchase_edit' %}" href="{% url 'specification_list' %}">Спецификации</a>
   <a class="{% tab_class request 'shipment_list' 'shipment_create' 'shipment_detail' 'shipment_edit' %}" href="{% url 'shipment_list' %}">Поставки</a>
 </nav>
 {% endif %}

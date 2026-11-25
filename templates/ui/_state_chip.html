@@ -1,0 +1,5 @@
+{% if status == "COMPLETED" or status == "POSTED" %}
+  <span class="chip bg-emerald-100 text-emerald-900">{{ label }}</span>
+{% else %}
+  <span class="chip bg-amber-100 text-amber-900">{{ label }}</span>
+{% endif %}

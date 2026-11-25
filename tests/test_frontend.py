@@ -195,15 +195,19 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
     assert shipment.status == Shipment.Status.DRAFT
     listed = boss_client.get(reverse("shipment_list"), {"status": "DRAFT"})
     assert listed.status_code == 200
-    assert "125-А" in listed.content.decode()
+    listed_html = listed.content.decode()
+    assert "С-1" in listed_html
+    assert "125-А" not in listed_html
     shipment.refresh_from_db()
     assert shipment.status == Shipment.Status.DRAFT
     assert StockMove.objects.count() == 0
     assert OpenItem.objects.count() == 0
     detail = boss_client.get(reverse("shipment_detail", args=[shipment.pk]))
     assert "Черновик не меняет склад и долг" in detail.content.decode()
+    assert "125-А" in detail.content.decode()
     drafts = boss_client.get(reverse("shipment_list"), {"status": "DRAFT"})
-    assert "125-А" in drafts.content.decode()
+    assert "С-1" in drafts.content.decode()
+    assert "125-А" not in drafts.content.decode()
 
     post_ok(
         boss_client,
@@ -275,7 +279,6 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
             {"account": kgs_cash, "amount": "1095"},
         ],
     )
-    debt = OpenItem.objects.get(order=rub_order, side=OpenItem.Side.WE_OWE)
     post_ok(
         boss_client,
         reverse("payment_create"),
@@ -287,7 +290,7 @@ def test_workplace_covers_reference_buying_receipt_and_money(boss_client):
             "external_reference": "PP-1",
             "note": "",
             "action": "post",
-            f"alloc-{debt.pk}": "10000",
+            f"alloc-order-{rub_order.pk}": "10000",
         },
     )
     assert party_amount(supplier, "payable", "we_owe", "RUB") == Decimal("10000.00")

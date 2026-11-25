@@ -25,6 +25,7 @@ from apps.procurement.services import (
     update_shipment,
 )
 from apps.ui.fields import LooseDecimalField, StyledForm, date_field, qty_field
+from apps.ui.figures import fill_percent, order_figures
 from apps.ui.formatting import format_money, format_qty, unit_label
 from apps.ui.http import (
     cancel_request,
@@ -73,6 +74,13 @@ class ShipmentForm(StyledForm):
             "Если вагон один. Для нескольких вагонов номера и вес каждого вводятся в карточке поставки."
         )
 
+    def clean(self):
+        cleaned = super().clean()
+        order = cleaned.get("order")
+        if order is not None and order.operational_status == PurchaseOrder.OperationalStatus.COMPLETED:
+            self.add_error("order", "Спецификация выполнена. Верните её в работу, чтобы добавить поставку.")
+        return cleaned
+
 
 class ShipmentStatusForm(StyledForm):
     arrival_date = date_field("Дата приёмки", required=False)
@@ -120,6 +128,7 @@ class ReceiptForm(StyledForm):
         self.fields["location"].widget = forms.HiddenInput()
         self.fields["bags"].widget = forms.HiddenInput()
         self.fields["effective_date"].initial = timezone.localdate()
+        self.over_note = ""
 
     def clean(self):
         cleaned = super().clean()
@@ -127,6 +136,8 @@ class ReceiptForm(StyledForm):
         warehouse = cleaned.get("warehouse")
         location = cleaned.get("location")
         quantity = cleaned.get("quantity")
+        if self.order.operational_status == PurchaseOrder.OperationalStatus.COMPLETED:
+            self.add_error(None, "Заказ выполнен. Верните его в работу, чтобы принять ещё товар.")
         if line and line.order_id != self.order.pk:
             self.add_error("purchase_line", "Строка не относится к выбранной закупке.")
         if location and warehouse and location.warehouse_id != warehouse.id:
@@ -140,6 +151,9 @@ class ReceiptForm(StyledForm):
                     self.add_error("quantity", f"Вес должен делиться на мешки по {format_qty(product.package_kg)} кг.")
                 else:
                     cleaned["bags"] = int(bags)
+        self.over_note = ""
+        if line and quantity is not None and not self.errors:
+            self.over_note = over_receipt_note(line, quantity)
         return cleaned
 
 
@@ -203,9 +217,12 @@ def shipment_list(request):
     qs = qs.distinct()
     page, query = pager(request, qs)
     rows = list(page.object_list)
+    figures = order_figures([shipment.order_id for shipment in rows])
     for shipment in rows:
         lines = list(shipment.order.lines.all())
         shipment.ui_line = lines[0] if lines else None
+        fig = figures[shipment.order_id]
+        shipment.ui_percent = fill_percent(fig["planned_qty"], fig["accepted_qty"])
     page.object_list = rows
     from apps.procurement.models import PurchaseContract
 
@@ -232,9 +249,20 @@ def shipment_list(request):
 def shipment_create(request):
     order_id = request.GET.get("order")
     order = PurchaseOrder.objects.filter(pk=order_id).select_related("document", "supplier").first() if order_id else None
+    if order is not None and order.operational_status == PurchaseOrder.OperationalStatus.COMPLETED and request.method != "POST":
+        messages.error(request, "Спецификация выполнена. Верните её в работу, чтобы добавить поставку.")
+        return redirect("purchase_detail", order.pk)
     if request.method == "POST":
         form = ShipmentForm(request.POST)
-        if form.is_valid():
+        posted_id = request.POST.get("order")
+        blocked = None
+        if str(posted_id or "").isdigit():
+            blocked = PurchaseOrder.objects.filter(
+                pk=posted_id, operational_status=PurchaseOrder.OperationalStatus.COMPLETED
+            ).first()
+        if blocked is not None:
+            messages.error(request, "Спецификация выполнена. Верните её в работу, чтобы добавить поставку.")
+        elif form.is_valid():
             data = form.cleaned_data
             try:
                 shipment = record_shipment(
@@ -434,6 +462,27 @@ def _posted_orders():
     )
 
 
+def over_receipt_note(line, quantity):
+    """Warning only. Receiving more than ordered stays allowed until the operator marks the order done."""
+    accepted = (
+        ReceiptLine.objects.filter(
+            purchase_line=line,
+            receipt__document__state=Document.State.POSTED,
+            receipt__document__reversal__isnull=True,
+        ).aggregate(total=Sum("quantity"))["total"]
+        or Decimal("0")
+    )
+    total = accepted + quantity
+    if not line.quantity or total <= line.quantity:
+        return ""
+    unit = line.product.get_unit_display()
+    return (
+        f"Уже принято {format_qty(accepted)} из {format_qty(line.quantity)} {unit}. "
+        f"После этой приёмки будет {format_qty(total)} {unit} — больше заказа. "
+        "Провести можно, пока заказ в работе."
+    )
+
+
 def line_context(line):
     order = line.order
     accepted = (
@@ -533,15 +582,23 @@ def receipt_create(request):
     order_id = request.GET.get("order") or request.POST.get("order")
     suppliers = Party.objects.filter(is_supplier=True, active=True, purchases__contract__isnull=True).distinct().order_by("name")
     # Wheat by specification is received by posting its shipment, so only ordinary orders are offered here.
-    orders = _posted_orders().filter(contract__isnull=True, document__reversal__isnull=True).prefetch_related(
-        "lines__product"
-    )
+    orders = _posted_orders().filter(
+        contract__isnull=True,
+        document__reversal__isnull=True,
+        operational_status=PurchaseOrder.OperationalStatus.IN_PROGRESS,
+    ).prefetch_related("lines__product")
     if supplier_id:
         orders = orders.filter(supplier_id=supplier_id)
     orders = list(orders[:200])
     for row in orders:
         row.ui_products = ", ".join(line.product.name for line in row.lines.all())
     order = _posted_orders().filter(pk=order_id).first() if str(order_id or "").isdigit() else None
+    if order is not None and order.operational_status == PurchaseOrder.OperationalStatus.COMPLETED:
+        if order.contract_id:
+            messages.error(request, "Спецификация выполнена. Верните её в работу, чтобы принять ещё товар.")
+        else:
+            messages.error(request, "Заказ выполнен. Верните его в работу, чтобы принять ещё товар.")
+        order = None
     form = None
     preview = None
     context = None
@@ -549,7 +606,7 @@ def receipt_create(request):
         form = ReceiptForm(request.POST or None, order=order)
         if request.method == "POST":
             action = request.POST.get("action")
-            if form.is_valid() and action == "post":
+            if form.is_valid() and action == "post" and (not form.over_note or request.POST.get("confirm_over") == "1"):
                 data = form.cleaned_data
                 line = data["purchase_line"]
                 try:

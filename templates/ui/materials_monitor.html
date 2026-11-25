@@ -21,6 +21,12 @@
           {% for row in categories %}<option value="{{ row.pk }}" {% if category == row.pk|stringformat:"s" %}selected{% endif %}>{{ row.name }}</option>{% endfor %}
         </select>
       </label>
+      <label class="text-sm">Состояние
+        <select name="status" class="mt-1 block rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Все</option>
+          {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
       <button class="btn-ghost">Найти</button>
     </form>
     <a class="btn-primary" href="{% url 'purchase_create' %}">Новый заказ</a>
@@ -28,7 +34,7 @@
   <div class="card overflow-x-auto">
     <table class="data-table">
       <thead class="bg-slate-50"><tr>
-        <th>Номер</th><th>Дата</th><th>Поставщик</th><th>Товар</th><th class="text-right">Заказано</th><th class="text-right">Цена</th><th class="text-right">Принято</th><th class="text-right">Долг</th><th>Валюта</th><th class="text-right">Действия</th>
+        <th>Номер</th><th>Дата</th><th>Поставщик</th><th>Товар</th><th class="text-right">Заказано</th><th class="text-right">Цена</th><th class="text-right">Принято</th><th class="text-right">%</th><th class="text-right">Долг</th><th>Валюта</th><th>Состояние</th><th class="text-right">Действия</th>
       </tr></thead>
       <tbody>
         {% for order in page %}
@@ -38,14 +44,16 @@
             <td>{{ order.supplier.name }}</td>
             <td>{% for line in order.ui_lines %}{{ line.product.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
             <td class="text-right tabular-nums">{{ order.fig.planned_qty|qty }}</td>
-            <td class="text-right tabular-nums">{% for line in order.ui_lines %}{{ line.price|money }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+            <td class="text-right tabular-nums">{% for line in order.ui_lines %}{{ line.price|money }} {{ order.currency }} за {{ line.product.get_unit_display }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
             <td class="text-right tabular-nums">{{ order.fig.accepted_qty|qty }}</td>
+            <td class="text-right tabular-nums">{{ order.ui_percent|pct }}</td>
             <td class="text-right tabular-nums">{{ order.fig.outstanding|money }}</td>
             <td>{{ order.currency }}</td>
+            <td>{% include "ui/_state_chip.html" with status=order.operational_status label=order.get_operational_status_display %}</td>
             <td>{% url 'purchase_edit' order.pk as edit_url %}{% include "ui/_actions.html" with edit=edit_url %}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="10" class="px-3 py-8 text-center text-slate-500">Заказов без договора нет.</td></tr>
+          <tr><td colspan="12" class="px-3 py-8 text-center text-slate-500">Заказов без договора нет.</td></tr>
         {% endfor %}
       </tbody>
     </table>

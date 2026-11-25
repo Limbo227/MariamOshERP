@@ -8,6 +8,8 @@ from apps.core.models import Organization, Party, User
 from apps.core.services import record_opening
 from apps.finance.models import ExpenseCategory, MoneyAccount, MoneyDocument, OpenItem
 from apps.inventory.models import Product, ProductCategory, StockMove, Warehouse
+from apps.inventory.queries import stock_qty
+from apps.inventory.services import record_receipt
 from apps.procurement.models import PurchaseOrder, RailwayStation, Shipment
 from apps.procurement.services import (
     post_shipment,
@@ -244,3 +246,86 @@ def test_specification_with_shipment_is_not_deleted(boss_client):
     order.refresh_from_db()
     assert order.document.state == "POSTED"
     assert StockMove.objects.count() == 0
+
+
+def test_wheat_filter_lists_only_grain(boss_client):
+    category = ProductCategory.objects.get(code="WHEAT")
+    Product.objects.create(sku="GRAIN-F", name="Пшеница отбор", kind="GRAIN", category=category, unit="KG")
+    Product.objects.create(sku="RAW-F", name="Премикс особый", kind="RAW", category=category, unit="KG")
+    html = boss_client.get(reverse("wheat_summary")).content.decode()
+    assert "Пшеница отбор" in html
+    assert "Премикс особый" not in html
+
+
+def test_new_specification_starts_from_an_active_contract(boss_client):
+    supplier = Party.objects.create(name="Поставщик спецификации", is_supplier=True)
+    opened = record_contract(supplier=supplier, number="ОТКР", contract_date=DAY)
+    closed = record_contract(supplier=supplier, number="ЗАКР", contract_date=DAY)
+    closed.active = False
+    closed.save()
+    page = boss_client.get(reverse("specification_list"))
+    assert "Новая спецификация" in page.content.decode()
+    picker = boss_client.get(reverse("specification_start"))
+    html = picker.content.decode()
+    assert "ОТКР" in html
+    assert "ЗАКР" not in html
+    response = boss_client.post(reverse("specification_start"), {"contract": opened.pk})
+    assert response.status_code == 302
+    assert response.url == reverse("specification_create", args=[opened.pk])
+
+
+def _receipt_post(client, order, warehouse, quantity, **extra):
+    return client.post(
+        reverse("receipt_create"),
+        {
+            "supplier": order.supplier_id,
+            "order": order.pk,
+            "purchase_line": order.lines.get().pk,
+            "warehouse": warehouse.pk,
+            "quantity": quantity,
+            "effective_date": "2026-11-02",
+            "note": "",
+            "action": "post",
+            **extra,
+        },
+    )
+
+
+def test_material_order_allows_extra_until_marked_done(boss_client):
+    supplier = Party.objects.create(name="Мешки UI", is_supplier=True)
+    sack = Product.objects.create(
+        sku="SACK-UI", name="Мешок UI", category=ProductCategory.objects.get(code="WHEAT"), unit="PCS"
+    )
+    warehouse = Warehouse.objects.create(code="pack-ui", name="Склад мешков", kind=Warehouse.Kind.RAW)
+    order = record_purchase(
+        supplier=supplier,
+        effective_date=DAY,
+        lines=[{"product": sack, "quantity": Decimal("500"), "price": Decimal("10")}],
+    )
+    line = order.lines.get()
+    record_receipt(
+        supplier=supplier,
+        warehouse=warehouse,
+        effective_date=DAY,
+        lines=[{"product": sack, "quantity": Decimal("500"), "purchase_line": line}],
+    )
+    listed = boss_client.get(reverse("materials_monitor")).content.decode()
+    assert "В работе" in listed
+    assert "100%" in listed
+    warned = _receipt_post(boss_client, order, warehouse, "500")
+    assert warned.status_code == 200
+    assert "больше заказа" in warned.content.decode()
+    assert stock_qty(sack)[0] == Decimal("500")
+    posted = _receipt_post(boss_client, order, warehouse, "500", confirm_over="1")
+    assert posted.status_code == 302
+    assert stock_qty(sack)[0] == Decimal("1000")
+    boss_client.post(reverse("specification_status", args=[order.pk]), {"action": "complete"})
+    order.refresh_from_db()
+    assert order.operational_status == PurchaseOrder.OperationalStatus.COMPLETED
+    card = boss_client.get(reverse("purchase_detail", args=[order.pk])).content.decode()
+    assert "Новую приёмку провести нельзя" in card
+    assert "Принять товар" not in card
+    blocked = _receipt_post(boss_client, order, warehouse, "500", confirm_over="1")
+    assert blocked.status_code == 200
+    assert "Заказ выполнен" in blocked.content.decode()
+    assert stock_qty(sack)[0] == Decimal("1000")

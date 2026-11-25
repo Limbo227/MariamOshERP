@@ -33,26 +33,50 @@
     </form>
     <a class="inline-flex min-h-11 items-center rounded-md bg-slate-900 px-4 text-sm text-white" href="{% url 'shipment_create' %}">Новая поставка</a>
   </div>
-  <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
-    <table class="min-w-full text-sm">
-      <thead class="sticky top-0 bg-slate-50 text-left text-slate-500"><tr>
-        <th class="px-3 py-2">Вагон</th><th class="px-3 py-2">Закупка</th><th class="px-3 py-2">Поставщик</th><th class="px-3 py-2">Станция</th><th class="px-3 py-2 text-right">Вагонов</th><th class="px-3 py-2 text-right">Вес, кг</th><th class="px-3 py-2 text-right">Цена</th><th class="px-3 py-2">Статус</th><th class="px-3 py-2">Отправление</th><th class="px-3 py-2 text-right">Действия</th>
+  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table class="data-table">
+      <thead class="sticky top-0 bg-slate-50"><tr>
+        <th>Поставщик</th>
+        <th>Спецификация</th>
+        <th>Дата</th>
+        <th>Станция</th>
+        <th class="text-right">Вес</th>
+        <th class="text-right">Цена</th>
+        <th>Статус</th>
+        <th>Отправление</th>
+        <th class="text-right"><span class="sr-only">Действия</span></th>
       </tr></thead>
       <tbody>
         {% for shipment in page %}
-          <tr class="border-t border-slate-100">
-            <td class="px-3 py-2"><a class="underline" href="{% url 'shipment_detail' shipment.pk %}">{{ shipment.wagon_number|default:"Без номера" }}</a></td>
-            <td class="px-3 py-2"><a class="underline" href="{% url 'purchase_detail' shipment.order.pk %}">{{ shipment.order.document.number }}</a></td>
-            <td class="px-3 py-2">{{ shipment.order.supplier.name }}</td>
-            <td class="px-3 py-2">{{ shipment.departure_station|default:"—" }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ shipment.wagon_count }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ shipment.quantity|qty }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{% if shipment.ui_line %}{{ shipment.ui_line.price|money }} {{ shipment.order.currency }}{% else %}—{% endif %}</td>
-            <td class="px-3 py-2">{{ shipment.get_status_display }}</td>
-            <td class="px-3 py-2">{% if shipment.departure_date %}{{ shipment.departure_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
-            <td class="px-3 py-2">{% url 'shipment_edit' shipment.pk as edit_url %}{% if shipment.status == "DRAFT" %}{% url 'shipment_delete' shipment.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить черновик поставки?" %}{% else %}{% include "ui/_actions.html" with edit=edit_url %}{% endif %}</td>
+          <tr>
+            <td>{{ shipment.order.supplier.name }}</td>
+            <td>
+              <a class="font-medium text-teal-800 underline" href="{% url 'purchase_detail' shipment.order.pk %}">
+                {% if shipment.order.specification_number %}№{{ shipment.order.specification_number }}{% else %}Заказ{% endif %}{% if shipment.order.contract %} · {{ shipment.order.contract.number }}{% endif %}
+              </a>
+              <span class="mt-0.5 block text-xs tabular-nums text-slate-500">пришло {{ shipment.ui_percent|pct }}</span>
+            </td>
+            <td>{{ shipment.order.document.effective_date|date:"d.m.Y" }}</td>
+            <td>{{ shipment.departure_station|default:"—" }}{% if shipment.destination_station %} → {{ shipment.destination_station }}{% endif %}</td>
+            <td class="text-right tabular-nums">
+              <span class="block">{{ shipment.quantity|tons }}</span>
+              <span class="block text-xs text-slate-500">{{ shipment.quantity|qty }} кг</span>
+            </td>
+            <td class="text-right tabular-nums">{% if shipment.ui_line %}{{ shipment.ui_line.price|money }} {{ shipment.order.currency }}{% else %}—{% endif %}</td>
+            <td>{% include "ui/_state_chip.html" with status=shipment.status label=shipment.get_status_display %}</td>
+            <td>{% if shipment.departure_date %}{{ shipment.departure_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+            <td class="text-right">
+              {% url 'shipment_detail' shipment.pk as open_url %}
+              {% url 'shipment_edit' shipment.pk as edit_url %}
+              {% if shipment.status == "DRAFT" %}
+                {% url 'shipment_delete' shipment.pk as delete_url %}
+                {% include "ui/_row_menu.html" with open=open_url edit=edit_url delete=delete_url confirm="Удалить черновик поставки?" %}
+              {% else %}
+                {% include "ui/_row_menu.html" with open=open_url edit=edit_url delete="" confirm="" %}
+              {% endif %}
+            </td>
           </tr>
-        {% empty %}<tr><td colspan="10" class="px-3 py-8 text-center text-slate-500">Поставок нет.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="9" class="px-3 py-8 text-center text-slate-500">Поставок нет.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

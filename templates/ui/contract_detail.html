@@ -41,22 +41,23 @@
   <div class="overflow-auto rounded-xl border border-slate-200 bg-white">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-left text-slate-500"><tr>
-        <th class="px-3 py-2">№</th><th class="px-3 py-2">Зерно</th><th class="px-3 py-2 text-right">План</th><th class="px-3 py-2 text-right">Принято</th><th class="px-3 py-2 text-right">Сумма принятого</th><th class="px-3 py-2 text-right">Оплачено</th><th class="px-3 py-2 text-right">Долг</th><th class="px-3 py-2">Состояние</th><th class="px-3 py-2 text-right">Действия</th>
+        <th class="px-3 py-2">№</th><th class="px-3 py-2">Зерно</th><th class="px-3 py-2 text-right">Цена</th><th class="px-3 py-2 text-right">План</th><th class="px-3 py-2 text-right">Принято</th><th class="px-3 py-2 text-right">Сумма принятого</th><th class="px-3 py-2 text-right">Оплачено</th><th class="px-3 py-2 text-right">Долг</th><th class="px-3 py-2">Состояние</th><th class="px-3 py-2 text-right">Действия</th>
       </tr></thead>
       <tbody>
         {% for spec in specs %}
           <tr class="border-t border-slate-100">
             <td class="px-3 py-2"><a class="underline" href="{% url 'purchase_detail' spec.pk %}">{{ spec.specification_number }}</a></td>
             <td class="px-3 py-2">{{ spec.fig.products|join:", " }}</td>
+            <td class="px-3 py-2 text-right tabular-nums">{% for line in spec.lines.all %}{{ line.price|money }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.planned_qty|tons }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_qty|tons }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.accepted_amount|money }} {{ spec.currency }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.paid|money }}</td>
             <td class="px-3 py-2 text-right tabular-nums">{{ spec.fig.outstanding|money }}</td>
-            <td class="px-3 py-2"><span class="chip {% if spec.operational_status == 'COMPLETED' %}bg-slate-200 text-slate-700{% else %}bg-emerald-100 text-emerald-900{% endif %}">{{ spec.get_operational_status_display }}</span></td>
+            <td class="px-3 py-2">{% include "ui/_state_chip.html" with status=spec.operational_status label=spec.get_operational_status_display %}</td>
             <td class="px-3 py-2">{% url 'purchase_edit' spec.pk as edit_url %}{% url 'purchase_delete' spec.pk as delete_url %}{% include "ui/_actions.html" with edit=edit_url delete=delete_url confirm="Удалить спецификацию? Если есть поставки или приёмки, удалить не получится." %}</td>
           </tr>
-        {% empty %}<tr><td colspan="9" class="px-3 py-8 text-center text-slate-500">Спецификаций нет. <a class="underline" href="{% url 'specification_create' contract.pk %}">Добавить первую</a></td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="10" class="px-3 py-8 text-center text-slate-500">Спецификаций нет. <a class="underline" href="{% url 'specification_create' contract.pk %}">Добавить первую</a></td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

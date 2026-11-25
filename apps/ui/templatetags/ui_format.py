@@ -46,6 +46,19 @@ def friendly_list(errors):
 
 
 @register.filter
+def pct(value):
+    """74.5 -> «74,5%». Empty when the order has no planned quantity."""
+    if value is None or value == "":
+        return "—"
+    from decimal import Decimal
+
+    text = f"{Decimal(value):f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text.replace(".", ",") + "%"
+
+
+@register.filter
 def tons(value):
     """Kilograms shown as tonnes: 2 000 000 -> «2 000 т»."""
     if value is None or value == "":
@@ -70,6 +83,7 @@ SECTIONS = {
         "contract_detail",
         "contract_edit",
         "specification_list",
+        "specification_start",
         "specification_create",
         "shipment_list",
         "shipment_create",
