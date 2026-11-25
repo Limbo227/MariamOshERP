@@ -15,3 +15,8 @@ media/
 staticfiles/
 *.log
 
+# Internal working spreadsheets and bank statements. Not source.
+docs/~$*.xlsx
+docs/*.xlsx
+docs/Bank/
+
