@@ -112,7 +112,7 @@ def record_receipt(*, supplier, warehouse, effective_date, lines, note="", actor
 
     from apps.core.models import Party
     from apps.finance.models import OpenItem
-    from apps.finance.services import add_open_item
+    from apps.finance.services import add_open_item, apply_supplier_advances
     from apps.procurement.models import PurchaseLine, PurchaseOrder
 
     if not lines:
@@ -192,6 +192,8 @@ def record_receipt(*, supplier, warehouse, effective_date, lines, note="", actor
             order=order,
             currency=order.currency,
         )
+    deal_currency = next(iter(currencies))
+    apply_supplier_advances(document, supplier, deal_currency)
     post_document(
         document,
         snapshot={

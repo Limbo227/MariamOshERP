@@ -459,6 +459,7 @@ def test_opening_and_settlement_are_not_forced_through_generic_repost(mill):
         amount="20000",
         effective_date=DAY,
         party=mill["supplier"],
+        fifo=False,
     )
     settlement = settle_supplier(party=mill["supplier"], effective_date=DAY, fifo=True, currency="RUB")
     assert Allocation.objects.filter(document=settlement).exists()

@@ -333,7 +333,7 @@ def test_unpost_keeps_payment_and_blocks_a_later_issue(mill):
     shipment.save()
     post_shipment(shipment)
     assert stock_qty(mill["wheat"])[0] == Decimal("180000")
-    assert party_amount(mill["supplier"], "payable", "we_owe", "RUB") == Decimal("3600000.00")
+    assert party_amount(mill["supplier"], "payable", "we_owe", "RUB") == Decimal("2600000.00")
     record_issue(
         customer=mill["customer"],
         warehouse=mill["raw"],

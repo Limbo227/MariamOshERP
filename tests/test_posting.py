@@ -10,7 +10,7 @@ from apps.core.quantities import display_rate, q_money, q_rate
 from apps.core.services import record_opening, reverse_document
 from apps.finance.models import CashOperation, MoneyAccount, MoneyMove, OpenItem
 from apps.finance.queries import money_balance, party_amount
-from apps.finance.services import recognize_accountable, record_money, settle_supplier
+from apps.finance.services import recognize_accountable, record_money
 from apps.inventory.models import Product, StockMove
 from apps.inventory.queries import stock_qty
 from apps.inventory.services import record_issue, record_receipt
@@ -454,7 +454,7 @@ def test_used_operation_keeps_its_effect(mill):
     assert Document.objects.filter(kind=Document.Kind.MONEY).count() == 1
 
 
-def test_unallocated_supplier_payment_stays_an_advance(mill):
+def test_supplier_payment_closes_the_oldest_receipt_and_keeps_the_rest_as_advance(mill):
     _open_money(mill, mill.bank, "250")
     order = record_purchase(
         supplier=mill.supplier,
@@ -464,8 +464,8 @@ def test_unallocated_supplier_payment_stays_an_advance(mill):
     _accept(mill, order, "10")
     stock = StockMove.objects.count()
     record_money(operation=mill.pay, account=mill.bank, amount="250", effective_date=DAY, party=mill.supplier)
-    assert party_amount(mill.supplier, "payable", "we_owe", "KGS") == Decimal("200")
-    assert party_amount(mill.supplier, "payable", "they_owe", "KGS") == Decimal("250")
+    assert party_amount(mill.supplier, "payable", "we_owe", "KGS") == 0
+    assert party_amount(mill.supplier, "payable", "they_owe", "KGS") == Decimal("50")
     assert money_balance(mill.bank) == 0
     assert StockMove.objects.count() == stock
 
@@ -523,8 +523,6 @@ def test_advance_is_settled_after_the_goods_arrive(mill):
         currency="RUB",
     )
     _accept(mill, order, "67500")
-    assert party_amount(mill.supplier, "payable", "we_owe", "RUB") == Decimal("1350000")
-    settle_supplier(party=mill.supplier, effective_date=DAY, fifo=True, currency="RUB")
     assert party_amount(mill.supplier, "payable", "we_owe", "RUB") == 0
     assert party_amount(mill.supplier, "payable", "they_owe", "RUB") == Decimal("3650000")
     assert money_balance(rub_bank) == 0

@@ -5,7 +5,7 @@
 {% block heading %}Оплата поставщику{% endblock %}
 {% block content %}
   {% include "ui/_finance_tabs.html" %}
-  <p class="mb-4 max-w-3xl text-sm text-slate-600">После выбора поставщика ниже только его спецификации и заказы с незакрытым долгом. Сумма в поле закрывает этот номер. Что не вписали, останется авансом.</p>
+  <p class="mb-4 max-w-3xl text-sm text-slate-600">После выбора поставщика ниже его спецификации и заказы с незакрытым долгом. Пустые поля закрывают самые ранние приёмки сами. Сумма в поле закрывает только этот номер. Что не ушло в долг, останется авансом и закроет следующую приёмку.</p>
   <form method="post" id="payment-form" class="max-w-2xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     {% csrf_token %}
     {% include "ui/_form_fields.html" %}

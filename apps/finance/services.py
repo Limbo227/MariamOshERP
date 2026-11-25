@@ -101,6 +101,34 @@ def _pair(document, payment, debt, amount):
     allocate_pair(debt, payment, amount, document)
 
 
+def apply_supplier_advances(document, party, currency):
+    """Close this document's new supplier debt from advances already on the account.
+
+    Oldest advance first. Other приемки are left as they are, so cancelling this
+    receipt only gives back the money it took.
+    """
+    items = _locked_payable_items(party)
+    advances = [
+        row for row in _remaining_entries(items, OpenItem.Side.THEY_OWE) if row["item"].currency == currency
+    ]
+    debts = [
+        row
+        for row in _remaining_entries(items, OpenItem.Side.WE_OWE)
+        if row["item"].document_id == document.pk and row["item"].currency == currency
+    ]
+    _consume(document, advances, debts)
+
+
+def _close_supplier_payment(document, party, currency, allocations, fifo, *, auto):
+    if allocations and fifo:
+        raise ValidationError("Укажите либо распределение, либо зачёт по очереди.")
+    if allocations:
+        _settle_on(document, party, allocations=allocations, fifo=False, currency=currency, allow_empty=True)
+        return
+    if fifo or auto:
+        _settle_on(document, party, allocations=None, fifo=True, currency=currency, allow_empty=True)
+
+
 def _consume(document, payments, debts):
     allocated = False
     for debt in debts:
@@ -278,7 +306,7 @@ def record_money(
     note="",
     actor=None,
     allocations=None,
-    fifo=False,
+    fifo=None,
     currency=None,
     destination_amount=None,
     rate=None,
@@ -393,8 +421,7 @@ def record_money(
             operation.name,
             currency=account.currency,
         )
-        if fifo or allocations:
-            _settle_on(document, party, allocations=allocations, fifo=fifo, currency=currency, allow_empty=True)
+        _close_supplier_payment(document, party, account.currency, allocations, fifo, auto=fifo is None)
     elif effect == CashOperation.Effect.RECEIVE_FROM_PARTY:
         item = add_open_item(
             document,
@@ -612,8 +639,7 @@ def repost_money_document(money, *, actor=None, allocations=None, fifo=False, cu
             operation.name,
             currency=account.currency,
         )
-        if fifo or allocations:
-            _settle_on(document, party, allocations=allocations, fifo=fifo, currency=currency, allow_empty=True)
+        _close_supplier_payment(document, party, account.currency, allocations, fifo, auto=fifo is None)
     elif effect == CashOperation.Effect.RECEIVE_FROM_PARTY:
         item = add_open_item(
             document,

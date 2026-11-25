@@ -15,12 +15,7 @@ from django.db import transaction
 from apps.core.models import Party
 from apps.core.services import record_opening, reverse_document
 from apps.finance.models import CashOperation, ExpenseCategory, MoneyAccount
-from apps.finance.services import (
-    recognize_accountable,
-    record_money,
-    record_shipment_expense,
-    settle_supplier,
-)
+from apps.finance.services import recognize_accountable, record_money, record_shipment_expense
 from apps.inventory.models import Product, ProductCategory, Warehouse
 from apps.inventory.products import save_product
 from apps.inventory.services import record_issue, record_receipt
@@ -222,11 +217,6 @@ class Command(BaseCommand):
             account=cash, amount=D("18500"), effective_date=date(2025, 9, 22),
             category=rail, shipment=july, note="Доплата бригаде за разгрузку, сентябрь", external_reference="CASH-2025-0922", actor=user,
         )
-        settle_supplier(
-            party=kaz, effective_date=date(2025, 12, 1),
-            allocations=[{"order": spec_old_1, "amount": D("40000")}],
-            note="Зачёт предоплаты KZ-2025/04 в спецификацию 1", actor=user,
-        )
         self._pay(
             pay, kaz, usd, "100000", date(2025, 12, 5),
             "Оплата спецификации 1, остаток долга не закрыт", "SWIFT-2025-1205", user, order=spec_old_1,
@@ -279,11 +269,6 @@ class Command(BaseCommand):
         record_shipment_expense(
             account=kgs_bank, amount=D("274600"), effective_date=date(2026, 4, 18),
             category=rail, shipment=april, note="ЖД тариф, Петропавловск — Манас", external_reference="KTZ-2026-0418", actor=user,
-        )
-        settle_supplier(
-            party=astyk, effective_date=date(2026, 9, 10),
-            allocations=[{"order": spec_kzt_1, "amount": D("10000000")}],
-            note="Зачёт предоплаты AST-2026/02 в спецификацию 1", actor=user,
         )
         self._pay(
             pay, astyk, kzt, "8000000", date(2026, 9, 15),
