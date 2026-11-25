@@ -4,7 +4,7 @@ Supply, stock and supplier debt run locally. Production screens are not part of 
 
 **Read first:** [overview](docs/overview.md) → [functional rules](docs/functional.md) → [database](docs/database.md).
 
-`docs/` describes the behavior the code posts now. `EBB-Holding-2026/` stays as the November 2026 design archive. Where they disagree, `docs/` is the one to follow.
+`docs/overview.md`, `docs/functional.md` and `docs/database.md` describe the behavior the code posts now. `docs/EBB-Holding-2026/` stays as the November 2026 design archive. Where they disagree, those three files are the ones to follow.
 
 This directory is the repository root. The application stays isolated from ERPNext. Code and these notes stay in one repository.
 
