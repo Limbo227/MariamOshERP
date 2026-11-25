@@ -6,7 +6,9 @@
 {% block content %}
   {% include "ui/_buying_tabs.html" %}
   <dl class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
-    <div><dt class="text-xs text-slate-500">Дата</dt><dd>{{ receipt.document.effective_date|date:"d.m.Y" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Дата приёмки</dt><dd>{{ receipt.document.effective_date|date:"d.m.Y" }}</dd></div>
+    <div><dt class="text-xs text-slate-500">Дата отправки</dt><dd>{% if source_shipment and source_shipment.departure_date %}{{ source_shipment.departure_date|date:"d.m.Y" }}{% else %}—{% endif %}</dd></div>
+    <div><dt class="text-xs text-slate-500">Станция отправления</dt><dd>{% if source_shipment and source_shipment.departure_station %}{{ source_shipment.departure_station }}{% else %}—{% endif %}</dd></div>
     <div><dt class="text-xs text-slate-500">Поставщик</dt><dd>{{ receipt.supplier.name }}</dd></div>
     <div><dt class="text-xs text-slate-500">Склад</dt><dd>{{ receipt.warehouse.name }}</dd></div>
     <div><dt class="text-xs text-slate-500">{% if reversal %}Сумма приёмки (отменена){% else %}Долг по приёмке{% endif %}</dt><dd class="tabular-nums {% if reversal %}text-slate-400 line-through{% endif %}">{{ payable|money }} {{ currency }}</dd></div>

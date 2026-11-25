@@ -681,7 +681,9 @@ def receipt_detail(request, pk):
         reversal = receipt.document.reversal
     except ObjectDoesNotExist:
         reversal = None
-    source_shipment = Shipment.objects.filter(receipt=receipt).first()
+    source_shipment = (
+        Shipment.objects.filter(receipt=receipt).select_related("departure_station").first()
+    )
     return render(
         request,
         "ui/receipt_detail.html",

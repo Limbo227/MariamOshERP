@@ -10,10 +10,8 @@ from django.views.decorators.http import require_POST
 
 from apps.core.models import Currency, Document, Party
 from apps.core.quantities import line_amount
-from apps.finance.models import MoneyDocument, OpenItem
-from apps.finance.queries import item_remaining, party_position
 from apps.inventory.checks import ensure_whole
-from apps.inventory.models import GoodsReceipt, Product
+from apps.inventory.models import Product
 from apps.procurement.models import DeliveryTerm, PurchaseContract, PurchaseOrder, Shipment
 from apps.procurement.services import (
     complete_specification,
@@ -31,7 +29,7 @@ from apps.ui.fields import (
     price_field,
     qty_field,
 )
-from apps.ui.figures import fill_percent, order_figures
+from apps.ui.figures import fill_percent, order_figures, specification_statement
 from apps.ui.formatting import format_money, format_qty, unit_label
 from apps.ui.http import erp_page, error_text, pager, remember_list, stored_back
 
@@ -439,32 +437,13 @@ def purchase_detail(request, pk):
     order.fig = order_figures([order.pk])[order.pk]
     order.ui_percent = fill_percent(order.fig["planned_qty"], order.fig["accepted_qty"])
     lines = order.lines.select_related("product")
-    shipments = order.shipments.all()
-    receipts = (
-        GoodsReceipt.objects.filter(lines__purchase_line__order=order)
-        .select_related("document", "warehouse")
-        .distinct()
-    )
-    payments = (
-        MoneyDocument.objects.filter(Q(order=order) | Q(document__allocations__we_owe__order=order))
-        .select_related("document", "account", "operation", "party")
-        .distinct()
-    )
-    debts = []
-    for item in OpenItem.objects.filter(order=order, lane=OpenItem.Lane.PAYABLE).select_related("document"):
-        debts.append({"item": item, "left": item_remaining(item)})
-    position = party_position(order.supplier)["payable"]
     return render(
         request,
         "ui/purchase_detail.html",
         {
             "order": order,
             "lines": lines,
-            "shipments": shipments,
-            "receipts": receipts,
-            "payments": payments,
-            "debts": debts,
-            "position": position,
+            "statement": specification_statement(order),
             "reversed": Document.objects.filter(reverses=order.document).exists(),
             "posted_shipments": order.shipments.filter(status=Shipment.Status.POSTED).exists(),
             "back_url": stored_back(request, "wheat" if order.contract_id else "purchases", "/purchases/"),
